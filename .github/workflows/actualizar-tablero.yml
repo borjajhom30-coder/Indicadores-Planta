@@ -31,7 +31,7 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           ONEDRIVE_USER_EMAIL: ${{ secrets.ONEDRIVE_USER_EMAIL }}
-          EXCEL_FILE_NAME: "Indicadores_de_empacadora"
+          EXCEL_FILE_NAME: "Indicadores de empacadora"
         run: python update_dashboard.py
 
       - name: Publicar el tablero actualizado (si cambió algo)
