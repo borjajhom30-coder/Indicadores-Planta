@@ -25,12 +25,13 @@ import datetime
 import requests
 import openpyxl
 from io import BytesIO
+from urllib.parse import quote
 
 TENANT_ID = os.environ["AZURE_TENANT_ID"]
 CLIENT_ID = os.environ["AZURE_CLIENT_ID"]
 CLIENT_SECRET = os.environ["AZURE_CLIENT_SECRET"]
 USER_EMAIL = os.environ["ONEDRIVE_USER_EMAIL"]
-FILE_NAME = os.environ.get("EXCEL_FILE_NAME", "Indicadores_de_empacadora")
+FILE_NAME = os.environ.get("EXCEL_FILE_NAME", "Indicadores de empacadora")
 
 GRAPH = "https://graph.microsoft.com/v1.0"
 
@@ -57,9 +58,26 @@ def get_access_token():
 
 
 def find_excel_file(token):
-    log(f"Buscando '{FILE_NAME}' en el OneDrive de {USER_EMAIL}...")
     headers = {"Authorization": f"Bearer {token}"}
-    url = f"{GRAPH}/users/{USER_EMAIL}/drive/root/search(q='{FILE_NAME}')"
+
+    # 1) intento directo: el archivo vive en la raíz del OneDrive con este
+    #    nombre exacto (confirmado por captura de pantalla) — es más rápido
+    #    y confiable que depender de que el buscador de Microsoft coincida.
+    for ext in (".xlsx", ".xlsm"):
+        candidate = f"{FILE_NAME}{ext}"
+        log(f"Intentando acceso directo: '{candidate}' en la raíz del OneDrive de {USER_EMAIL}...")
+        url = f"{GRAPH}/users/{USER_EMAIL}/drive/root:/{quote(candidate)}"
+        r = requests.get(url, headers=headers, timeout=30)
+        if r.status_code == 200:
+            item = r.json()
+            log(f"Encontrado directamente: '{item['name']}' (modificado {item.get('lastModifiedDateTime')})")
+            return item["id"]
+        log(f"  no encontrado así ({r.status_code}), probando siguiente opción...")
+
+    # 2) respaldo: buscarlo por nombre, por si está en otra carpeta o el
+    #    nombre exacto cambió un poco
+    log(f"Buscando '{FILE_NAME}' en todo el OneDrive de {USER_EMAIL}...")
+    url = f"{GRAPH}/users/{USER_EMAIL}/drive/root/search(q='{quote(FILE_NAME)}')"
     r = requests.get(url, headers=headers, timeout=30)
     if r.status_code != 200:
         log(f"ERROR al buscar el archivo: {r.status_code} {r.text}")
@@ -67,12 +85,11 @@ def find_excel_file(token):
     items = r.json().get("value", [])
     items = [i for i in items if i.get("name", "").lower().endswith((".xlsx", ".xlsm"))]
     if not items:
-        log("ERROR: no encontré ningún archivo .xlsx/.xlsm que coincida.")
+        log("ERROR: no encontré ningún archivo .xlsx/.xlsm que coincida, ni directo ni buscando.")
         sys.exit(1)
-    # si hay varias coincidencias, toma la modificada más recientemente
     items.sort(key=lambda i: i.get("lastModifiedDateTime", ""), reverse=True)
     chosen = items[0]
-    log(f"Encontrado: '{chosen['name']}' (modificado {chosen.get('lastModifiedDateTime')})")
+    log(f"Encontrado por búsqueda: '{chosen['name']}' (modificado {chosen.get('lastModifiedDateTime')})")
     return chosen["id"]
 
 
