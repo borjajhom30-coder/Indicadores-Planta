@@ -320,7 +320,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   }
   .month-chip.active{background:var(--gold);color:#FFFBF2;border-color:var(--gold);}
   .month-chip:hover:not(.active){border-color:var(--gold);color:var(--text-primary);}
-  .descarte-period-label{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-dim);margin-top:3px;}
+  .descarte-tag-stack{display:flex;flex-direction:column;align-items:flex-end;gap:5px;}
   .descarte-chart-panel{
     background:var(--bg-panel-2);border:1px solid var(--border);border-radius:14px;
     padding:16px 18px 12px;margin-bottom:16px;
@@ -518,11 +518,11 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
     <div class="descarte-chart-panel">
       <div class="panel-head">
-        <div>
-          <div class="panel-title">Causas de pérdida postcosecha</div>
-          <div class="descarte-period-label" id="descartePeriodLabel"></div>
+        <div class="panel-title">Causas de pérdida postcosecha</div>
+        <div class="descarte-tag-stack">
+          <div class="panel-tag" style="background:var(--orange-soft);color:var(--orange);">Qué se descartó más</div>
+          <div class="panel-tag" id="descartePeriodTag" style="background:var(--gold-soft);color:var(--gold);">—</div>
         </div>
-        <div class="panel-tag" style="background:var(--orange-soft);color:var(--orange);">Qué se descartó más</div>
       </div>
       <div class="panel-body" style="height:340px;"><canvas id="chartPostcosecha"></canvas></div>
     </div>
@@ -1535,20 +1535,19 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   function describeDescartePeriod(){
     var monthsArr = MESES.filter(function(m){ return descarteMonths.has(m); });
     var yearsArr = Array.from(state.years).sort();
-    var monthLabel;
-    if(monthsArr.length === 12) monthLabel = 'Todos los meses';
-    else if(monthsArr.length === 1) monthLabel = MES_NOMBRE[MESES.indexOf(monthsArr[0])];
-    else monthLabel = monthsArr.map(function(m){ return MES_ABR[MESES.indexOf(m)]; }).join('+');
-    var yearLabel = yearsArr.length ? yearsArr.join(', ') : '';
-    return monthLabel + ' ' + yearLabel;
+    var yearLabel = yearsArr.length ? yearsArr.join(', ') : 'sin años';
+    if(monthsArr.length === 12) return yearLabel;
+    if(monthsArr.length === 0) return yearLabel;
+    var monthLabel = monthsArr.map(function(m){ return MES_ABR[MESES.indexOf(m)]; }).join(', ');
+    return monthLabel + ' · ' + yearLabel;
   }
 
   function renderPostcosecha(pcRows){
     var arr = sumCausas(pcRows, i4, CAUSAS_PC).filter(function(d){return d.value>0;});
     var total = arr.reduce(function(a,d){ return a+d.value; }, 0);
 
-    var lbl = document.getElementById('descartePeriodLabel');
-    if(lbl) lbl.textContent = describeDescartePeriod() + ' · ' + fmtInt(total) + ' kg descartados en total';
+    var tag = document.getElementById('descartePeriodTag');
+    if(tag) tag.textContent = describeDescartePeriod();
 
     upsertChart('chartPostcosecha', {
       type:'bar',
