@@ -305,6 +305,22 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   }
   .descarte-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:18px;}
   .descarte-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .descarte-month-filter{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    background:var(--bg-panel-2);border:1px solid var(--border);border-radius:12px;
+    padding:10px 14px;margin-bottom:18px;
+  }
+  .descarte-month-filter label{
+    font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);font-weight:600;margin-right:2px;
+  }
+  .month-chip{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;
+    padding:5px 9px;border-radius:7px;border:1px solid var(--border-strong);
+    background:var(--bg-input);color:var(--text-secondary);cursor:pointer;transition:all .15s ease;
+  }
+  .month-chip.active{background:var(--gold);color:#FFFBF2;border-color:var(--gold);}
+  .month-chip:hover:not(.active){border-color:var(--gold);color:var(--text-primary);}
+  .descarte-period-label{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-dim);margin-top:3px;}
   .descarte-chart-panel{
     background:var(--bg-panel-2);border:1px solid var(--border);border-radius:14px;
     padding:16px 18px 12px;margin-bottom:16px;
@@ -474,6 +490,13 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
       </div>
     </div>
 
+    <div class="descarte-month-filter">
+      <label>Meses a incluir</label>
+      <div class="filter-group" id="descarteMonthChips"></div>
+      <button type="button" class="dropzone-link" id="descarteMonthAll">marcar todos</button>
+      <button type="button" class="dropzone-link" id="descarteMonthNone">desmarcar todos</button>
+    </div>
+
     <div class="kpis" id="descarteKpiRow"></div>
 
     <div class="descarte-chart-panel">
@@ -495,7 +518,10 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
     <div class="descarte-chart-panel">
       <div class="panel-head">
-        <div class="panel-title">Causas de pérdida postcosecha</div>
+        <div>
+          <div class="panel-title">Causas de pérdida postcosecha</div>
+          <div class="descarte-period-label" id="descartePeriodLabel"></div>
+        </div>
         <div class="panel-tag" style="background:var(--orange-soft);color:var(--orange);">Qué se descartó más</div>
       </div>
       <div class="panel-body" style="height:340px;"><canvas id="chartPostcosecha"></canvas></div>
@@ -1268,10 +1294,41 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   }
 
   // ================= DESCARTE POSTCOSECHA =================
+  var descarteMonths = new Set(MESES); // por defecto, los 12 meses activos
+  var descarteMonthChipsWrap = document.getElementById('descarteMonthChips');
+  if(descarteMonthChipsWrap){
+    MESES.forEach(function(m, idx){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'month-chip active'; b.textContent = MES_ABR[idx]; b.dataset.mes = m;
+      b.addEventListener('click', function(){
+        if(descarteMonths.has(m) && descarteMonths.size>1){ descarteMonths.delete(m); b.classList.remove('active'); }
+        else { descarteMonths.add(m); b.classList.add('active'); }
+        var pcRowsNow = filterByFecha(DATA.post_cosecha, i4);
+        renderDescarteSection(pcRowsNow);
+      });
+      descarteMonthChipsWrap.appendChild(b);
+    });
+  }
+  var descarteMonthAllBtn = document.getElementById('descarteMonthAll');
+  var descarteMonthNoneBtn = document.getElementById('descarteMonthNone');
+  if(descarteMonthAllBtn) descarteMonthAllBtn.addEventListener('click', function(){
+    descarteMonths = new Set(MESES);
+    descarteMonthChipsWrap.querySelectorAll('.month-chip').forEach(function(c){ c.classList.add('active'); });
+    renderDescarteSection(filterByFecha(DATA.post_cosecha, i4));
+  });
+  if(descarteMonthNoneBtn) descarteMonthNoneBtn.addEventListener('click', function(){
+    // deja al menos enero marcado para no dejar la seccion completamente vacia
+    descarteMonths = new Set([MESES[0]]);
+    descarteMonthChipsWrap.querySelectorAll('.month-chip').forEach(function(c){ c.classList.toggle('active', c.dataset.mes===MESES[0]); });
+    renderDescarteSection(filterByFecha(DATA.post_cosecha, i4));
+  });
+
   function aggregateDescarte(pcRows, gran){
     var groups = {}, order = [];
     pcRows.forEach(function(r){
       var fecha = r[i4.fecha];
+      var mesIdx0 = +fecha.slice(5,7) - 1;
+      if(!descarteMonths.has(MESES[mesIdx0])) return; // respeta los chips de mes marcados
       var anio = +fecha.slice(0,4);
       var key, label;
       if(gran === 'anio'){
@@ -1358,9 +1415,10 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     body.innerHTML = html || '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:16px;">Sin datos para el periodo seleccionado</td></tr>';
 
     window.__descarteExportData = data;
-    window.__descarteExportCausas = sumCausas(pcRows, i4, CAUSAS_PC).filter(function(d){return d.value>0;});
+    var pcRowsMes = pcRows.filter(function(r){ return descarteMonths.has(MESES[+r[i4.fecha].slice(5,7)-1]); });
+    window.__descarteExportCausas = sumCausas(pcRowsMes, i4, CAUSAS_PC).filter(function(d){return d.value>0;});
 
-    renderPostcosecha(pcRows);
+    renderPostcosecha(pcRowsMes);
     renderDescarteComparativo();
   }
 
@@ -1370,12 +1428,16 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   // propósito es comparar meses completos entre sí, no acotar un periodo.
   function renderDescarteComparativo(){
     var years = Array.from(state.years).sort();
+    var monthIdxs = []; // solo los indices de mes que estan marcados en los chips
+    MESES.forEach(function(m, idx){ if(descarteMonths.has(m)) monthIdxs.push(idx); });
+
     var byMonth = {}; // mesIdx -> {anio: {merma,cosecha}}
     DATA.post_cosecha.rows.forEach(function(r){
       var fecha = r[i4.fecha];
       var anio = +fecha.slice(0,4);
       if(!state.years.has(anio)) return;
       var mesIdx = +fecha.slice(5,7) - 1;
+      if(!descarteMonths.has(MESES[mesIdx])) return;
       if(!byMonth[mesIdx]) byMonth[mesIdx] = {};
       if(!byMonth[mesIdx][anio]) byMonth[mesIdx][anio] = {merma:0, cosecha:0};
       byMonth[mesIdx][anio].merma += r[i4.total_merma]||0;
@@ -1386,11 +1448,11 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     var pctByDataset = []; // guardamos el % de cada dataset, por mes, para el formatter de etiquetas
     var datasets = years.map(function(y, idx){
       var dataKg = [], dataPct = [];
-      for(var m=0; m<12; m++){
+      monthIdxs.forEach(function(m){
         var cell = byMonth[m] && byMonth[m][y];
         dataKg.push(cell && cell.cosecha ? cell.merma : null);
         dataPct.push(cell && cell.cosecha ? (cell.merma/cell.cosecha*100) : null);
-      }
+      });
       pctByDataset.push(dataPct);
       return {label:String(y), data:dataKg, backgroundColor:yearColors[idx%yearColors.length], borderRadius:3};
     });
@@ -1411,8 +1473,8 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
     upsertChart('chartDescarteComparativo', {
       type:'bar',
-      data:{ labels: MES_ABR, datasets: datasets },
-      options: chartOpts({ y:{grid:baseGrid(), ticks:{callback:function(v){return fmtCompact(v);}}} }, true, false, 46, 12)
+      data:{ labels: monthIdxs.map(function(m){return MES_ABR[m];}), datasets: datasets },
+      options: chartOpts({ y:{grid:baseGrid(), ticks:{callback:function(v){return fmtCompact(v);}}} }, true, false, 46, monthIdxs.length)
     }, { enabled:true, minSpacing:14, series: series });
   }
 
@@ -1470,8 +1532,24 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     });
   }
 
+  function describeDescartePeriod(){
+    var monthsArr = MESES.filter(function(m){ return descarteMonths.has(m); });
+    var yearsArr = Array.from(state.years).sort();
+    var monthLabel;
+    if(monthsArr.length === 12) monthLabel = 'Todos los meses';
+    else if(monthsArr.length === 1) monthLabel = MES_NOMBRE[MESES.indexOf(monthsArr[0])];
+    else monthLabel = monthsArr.map(function(m){ return MES_ABR[MESES.indexOf(m)]; }).join('+');
+    var yearLabel = yearsArr.length ? yearsArr.join(', ') : '';
+    return monthLabel + ' ' + yearLabel;
+  }
+
   function renderPostcosecha(pcRows){
     var arr = sumCausas(pcRows, i4, CAUSAS_PC).filter(function(d){return d.value>0;});
+    var total = arr.reduce(function(a,d){ return a+d.value; }, 0);
+
+    var lbl = document.getElementById('descartePeriodLabel');
+    if(lbl) lbl.textContent = describeDescartePeriod() + ' · ' + fmtInt(total) + ' kg descartados en total';
+
     upsertChart('chartPostcosecha', {
       type:'bar',
       data:{ labels:arr.map(function(d){return d.name;}), datasets:[
@@ -1479,8 +1557,12 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
       ]},
       options: chartOpts({ y:{grid:baseGrid(), ticks:{callback:function(v){return fmtCompact(v);}}} }, false, false, 30, arr.length)
     }, {
-      enabled:true, minSpacing:55,
-      series:[{index:0, formatter:function(v){return fmtInt(v);}, color:'#FBE6D2', yOffset:-9, minSpacing:55, font:"600 9px 'IBM Plex Mono', monospace"}]
+      enabled:true, minSpacing:65,
+      series:[{
+        index:0,
+        formatter:function(v){ var pct = total ? (v/total*100) : 0; return fmtInt(v)+' kg ('+fmtDec(pct,1)+'%)'; },
+        color:'#FBE6D2', yOffset:-9, minSpacing:65, font:"600 9px 'IBM Plex Mono', monospace"
+      }]
     });
   }
 
