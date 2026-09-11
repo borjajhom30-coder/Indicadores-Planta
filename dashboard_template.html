@@ -38,6 +38,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 </script>
 
 
+
 <style>
   :root{
     --bg-app:#F6F3E7;
@@ -157,6 +158,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   .kpis{
     display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px;
   }
+  #kpiRow{grid-template-columns:repeat(5,1fr);}
   .kpi-card{
     background:var(--bg-panel);border:1px solid var(--border);border-radius:14px;
     padding:16px 16px 14px;position:relative;overflow:hidden;
@@ -243,11 +245,13 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
   @media (max-width:1100px){
     .kpis{grid-template-columns:repeat(2,1fr);}
+    #kpiRow{grid-template-columns:repeat(3,1fr);}
     .grid{grid-template-columns:1fr;}
   }
   @media (max-width:640px){
     .app{padding:18px 14px 40px;}
     .kpis{grid-template-columns:repeat(2,1fr);}
+    #kpiRow{grid-template-columns:repeat(2,1fr);}
     .topbar{align-items:flex-start;}
     .header-meta{text-align:left;}
   }
@@ -581,6 +585,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
 <script id="app-data" type="application/json">__DATA_PLACEHOLDER__</script>
 <script>
+
 
 
 (function(){
@@ -958,7 +963,8 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     {key:'kgTotal', label:'Kg procesados (total)', accent:'gold'},
     {key:'kgHoraProm', label:'Kg/hora promedio', accent:'green'},
     {key:'descarteProm', label:'% Descarte promedio', accent:'coral'},
-    {key:'horasExtraTotal', label:'Horas extra (total periodo)', accent:'orange'}
+    {key:'horasExtraTotal', label:'Horas extra (total periodo)', accent:'orange'},
+    {key:'operariosProm', label:'Promedio de jornales/operarios', accent:'blue'}
   ];
   kpiDefs.forEach(function(def){
     var card = document.createElement('div');
@@ -1178,8 +1184,10 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
   function renderKPIs(dailyRows, horasRows, pcRows){
     var kg=0, kgHoraSum=0, n=dailyRows.length;
+    var operariosSum=0, operariosN=0;
     dailyRows.forEach(function(r){
       kg += r[i1.kg_dia]||0; kgHoraSum += r[i1.kg_hora]||0;
+      if(r[i1.operarios]){ operariosSum += r[i1.operarios]; operariosN++; }
     });
     var horasExtraTotal = 0;
     horasRows.forEach(function(r){ horasExtraTotal += r[i2.horas_extras_total]||0; });
@@ -1196,6 +1204,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
            fmtInt(mermaSum)+' kg descartados · ' + (descartePct > 0.04 ? 'por encima de meta (4%)' : 'dentro de meta'),
            descartePct>0.04?'down':'up');
     setKpi('horasExtraTotal', fmtInt(horasExtraTotal), horasRows.length + ' semanas');
+    setKpi('operariosProm', operariosN? fmtDec(operariosSum/operariosN,1):'0', operariosN + ' días con dato de operarios');
   }
   function setKpi(key, val, sub, cls){
     document.getElementById('kpi-'+key).innerHTML = val;
@@ -1705,7 +1714,9 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
 
 
+
 </script>
+
 
 
 </body>
