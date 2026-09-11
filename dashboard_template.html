@@ -964,7 +964,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     {key:'kgHoraProm', label:'Kg/hora promedio', accent:'green'},
     {key:'descarteProm', label:'% Descarte promedio', accent:'coral'},
     {key:'horasExtraTotal', label:'Horas extra (total periodo)', accent:'orange'},
-    {key:'operariosProm', label:'Promedio de jornales/operarios', accent:'blue'}
+    {key:'operariosTotal', label:'Jornales/operarios (total)', accent:'blue'}
   ];
   kpiDefs.forEach(function(def){
     var card = document.createElement('div');
@@ -1204,7 +1204,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
            fmtInt(mermaSum)+' kg descartados · ' + (descartePct > 0.04 ? 'por encima de meta (4%)' : 'dentro de meta'),
            descartePct>0.04?'down':'up');
     setKpi('horasExtraTotal', fmtInt(horasExtraTotal), horasRows.length + ' semanas');
-    setKpi('operariosProm', operariosN? fmtDec(operariosSum/operariosN,1):'0', operariosN + ' días con dato de operarios');
+    setKpi('operariosTotal', fmtInt(operariosSum), operariosN + ' días con dato de operarios');
   }
   function setKpi(key, val, sub, cls){
     document.getElementById('kpi-'+key).innerHTML = val;
