@@ -1189,8 +1189,14 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
       kg += r[i1.kg_dia]||0; kgHoraSum += r[i1.kg_hora]||0;
       if(r[i1.operarios]){ operariosSum += r[i1.operarios]; operariosN++; }
     });
-    var horasExtraTotal = 0;
-    horasRows.forEach(function(r){ horasExtraTotal += r[i2.horas_extras_total]||0; });
+    var horasExtraTotal = 0, rnSum=0, eoSum=0, rfSum=0, efSum=0;
+    horasRows.forEach(function(r){
+      horasExtraTotal += r[i2.horas_extras_total]||0;
+      rnSum += r[i2.recargo_nocturno]||0;
+      eoSum += r[i2.horas_extra_ordinarias]||0;
+      rfSum += r[i2.recargo_festivo]||0;
+      efSum += r[i2.horas_extra_festivas]||0;
+    });
 
     // % y Kg de descarte: fuente autoritativa = Consolidado Post-cosecha
     // (total_merma / total_cosecha), igual que en el panel "Descarte Postcosecha"
@@ -1203,7 +1209,8 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     setKpi('descarteProm', fmtPct(descartePct,1),
            fmtInt(mermaSum)+' kg descartados · ' + (descartePct > 0.04 ? 'por encima de meta (4%)' : 'dentro de meta'),
            descartePct>0.04?'down':'up');
-    setKpi('horasExtraTotal', fmtInt(horasExtraTotal), horasRows.length + ' semanas');
+    setKpi('horasExtraTotal', fmtInt(horasExtraTotal),
+           'RN: '+fmtDec(rnSum,1)+' · EO: '+fmtDec(eoSum,1)+' · RF: '+fmtDec(rfSum,1)+' · EF: '+fmtDec(efSum,1)+' · '+horasRows.length+' sem.');
     setKpi('operariosTotal', fmtInt(operariosSum), operariosN + ' días con dato de operarios');
   }
   function setKpi(key, val, sub, cls){
