@@ -17,10 +17,14 @@ nunca quedan escritas en este archivo):
   AZURE_CLIENT_SECRET   - El "Valor" del secreto de cliente
   ONEDRIVE_USER_EMAIL   - Correo del OneDrive donde vive el Excel
   EXCEL_FILE_NAME       - Nombre (o parte del nombre) del archivo a buscar
+  EXCEL_FOLDER_PATHS    - (opcional) lista de carpetas donde buscar primero,
+                           separadas por "|". Ej: "|Planta" busca primero en
+                           la raíz y luego dentro de la carpeta "Planta".
 """
 import os
 import sys
 import json
+import time
 import datetime
 import requests
 import openpyxl
@@ -32,6 +36,7 @@ CLIENT_ID = os.environ["AZURE_CLIENT_ID"]
 CLIENT_SECRET = os.environ["AZURE_CLIENT_SECRET"]
 USER_EMAIL = os.environ["ONEDRIVE_USER_EMAIL"]
 FILE_NAME = os.environ.get("EXCEL_FILE_NAME", "Indicadores de empacadora")
+FOLDER_PATHS = os.environ.get("EXCEL_FOLDER_PATHS", "|Planta").split("|")
 
 GRAPH = "https://graph.microsoft.com/v1.0"
 
@@ -60,37 +65,52 @@ def get_access_token():
 def find_excel_file(token):
     headers = {"Authorization": f"Bearer {token}"}
 
-    # 1) intento directo: el archivo vive en la raíz del OneDrive con este
-    #    nombre exacto (confirmado por captura de pantalla) — es más rápido
-    #    y confiable que depender de que el buscador de Microsoft coincida.
-    for ext in (".xlsx", ".xlsm"):
-        candidate = f"{FILE_NAME}{ext}"
-        log(f"Intentando acceso directo: '{candidate}' en la raíz del OneDrive de {USER_EMAIL}...")
-        url = f"{GRAPH}/users/{USER_EMAIL}/drive/root:/{quote(candidate)}"
+    # 1) intento directo: probamos el archivo en cada carpeta candidata
+    #    (por defecto: la raíz, y luego la carpeta "Planta") — es más rápido
+    #    y confiable que depender del buscador de Microsoft.
+    for folder in FOLDER_PATHS:
+        for ext in (".xlsx", ".xlsm"):
+            candidate = f"{FILE_NAME}{ext}"
+            path = f"{folder}/{candidate}" if folder else candidate
+            ubicacion = f"carpeta '{folder}'" if folder else "la raíz"
+            log(f"Intentando acceso directo: '{candidate}' en {ubicacion} del OneDrive de {USER_EMAIL}...")
+            url = f"{GRAPH}/users/{USER_EMAIL}/drive/root:/{quote(path)}"
+            r = requests.get(url, headers=headers, timeout=30)
+            if r.status_code == 200:
+                item = r.json()
+                log(f"Encontrado directamente: '{item['name']}' en {ubicacion} (modificado {item.get('lastModifiedDateTime')})")
+                return item["id"]
+            log(f"  no encontrado así ({r.status_code}), probando siguiente opción...")
+
+    # 2) respaldo: buscarlo por nombre en todo el OneDrive, por si está en
+    #    otra carpeta que no probamos arriba, o cambió un poco el nombre.
+    #    Reintentamos unas veces porque este buscador puede fallar de forma
+    #    pasajera (p.ej. si OneDrive está sincronizando el archivo justo en
+    #    ese momento).
+    last_error = None
+    for intento in range(1, 4):
+        log(f"Buscando '{FILE_NAME}' en todo el OneDrive de {USER_EMAIL}... (intento {intento}/3)")
+        url = f"{GRAPH}/users/{USER_EMAIL}/drive/root/search(q='{quote(FILE_NAME)}')"
         r = requests.get(url, headers=headers, timeout=30)
         if r.status_code == 200:
-            item = r.json()
-            log(f"Encontrado directamente: '{item['name']}' (modificado {item.get('lastModifiedDateTime')})")
-            return item["id"]
-        log(f"  no encontrado así ({r.status_code}), probando siguiente opción...")
+            items = r.json().get("value", [])
+            items = [i for i in items if i.get("name", "").lower().endswith((".xlsx", ".xlsm"))]
+            if items:
+                items.sort(key=lambda i: i.get("lastModifiedDateTime", ""), reverse=True)
+                chosen = items[0]
+                log(f"Encontrado por búsqueda: '{chosen['name']}' (modificado {chosen.get('lastModifiedDateTime')})")
+                return chosen["id"]
+            log("  la búsqueda no encontró ningún .xlsx/.xlsm que coincida.")
+            last_error = "sin resultados"
+        else:
+            log(f"  ERROR al buscar el archivo: {r.status_code} {r.text}")
+            last_error = f"{r.status_code} {r.text}"
+        if intento < 3:
+            log("  esperando 10 segundos antes de reintentar...")
+            time.sleep(10)
 
-    # 2) respaldo: buscarlo por nombre, por si está en otra carpeta o el
-    #    nombre exacto cambió un poco
-    log(f"Buscando '{FILE_NAME}' en todo el OneDrive de {USER_EMAIL}...")
-    url = f"{GRAPH}/users/{USER_EMAIL}/drive/root/search(q='{quote(FILE_NAME)}')"
-    r = requests.get(url, headers=headers, timeout=30)
-    if r.status_code != 200:
-        log(f"ERROR al buscar el archivo: {r.status_code} {r.text}")
-        sys.exit(1)
-    items = r.json().get("value", [])
-    items = [i for i in items if i.get("name", "").lower().endswith((".xlsx", ".xlsm"))]
-    if not items:
-        log("ERROR: no encontré ningún archivo .xlsx/.xlsm que coincida, ni directo ni buscando.")
-        sys.exit(1)
-    items.sort(key=lambda i: i.get("lastModifiedDateTime", ""), reverse=True)
-    chosen = items[0]
-    log(f"Encontrado por búsqueda: '{chosen['name']}' (modificado {chosen.get('lastModifiedDateTime')})")
-    return chosen["id"]
+    log(f"ERROR: no encontré el archivo, ni directo ni buscando, tras 3 intentos. Último error: {last_error}")
+    sys.exit(1)
 
 
 def download_file(token, item_id):
