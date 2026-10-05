@@ -1,18 +1,30 @@
 name: Actualizar tablero desde OneDrive
 
 on:
-  # el disparo automatico ahora lo hace SOLO cron-job.org (llamando a este
-  # mismo evento por la API de GitHub) -- ya no usamos el "schedule" interno
-  # de GitHub porque no es confiable y podia chocar con cron-job.org,
-  # generando dos corridas al mismo tiempo.
+  # el disparo automatico lo hace SOLO cron-job.org (llamando a este mismo
+  # evento por la API de GitHub) -- no usamos el "schedule" interno de GitHub
+  # porque no es confiable y podia chocar con cron-job.org.
   workflow_dispatch:
 
 permissions:
   contents: write
 
+# Solo una corrida a la vez. Si GitHub se atrasa y se acumulan avisos de
+# cron-job.org, no corren todas en paralelo (se pisarian al guardar el
+# tablero): la que esta en curso termina, y solo queda esperando la mas
+# reciente. Las intermedias se cancelan solas (no cuentan como "fallidas").
+concurrency:
+  group: actualizar-tablero
+  cancel-in-progress: false
+
 jobs:
   actualizar:
-    runs-on: ubuntu-latest
+    # Version fija de Ubuntu: GitHub va a cambiar "ubuntu-latest" a Ubuntu 26
+    # el 19-oct-2026. Fijando la 24.04 evitamos sorpresas con ese cambio.
+    runs-on: ubuntu-24.04
+    # Si por algo el robot se queda trabado ya corriendo, no lo dejamos
+    # colgado: se corta a los 5 minutos (normalmente tarda ~30 segundos).
+    timeout-minutes: 5
     steps:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
