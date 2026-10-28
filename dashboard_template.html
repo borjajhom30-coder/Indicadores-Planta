@@ -39,6 +39,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
 
 
+
 <style>
   :root{
     --bg-app:#F6F3E7;
@@ -158,7 +159,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   .kpis{
     display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px;
   }
-  #kpiRow{grid-template-columns:repeat(5,1fr);}
+  #kpiRow, #nominaKpiRow{grid-template-columns:repeat(5,1fr);}
   .kpi-card{
     background:var(--bg-panel);border:1px solid var(--border);border-radius:14px;
     padding:16px 16px 14px;position:relative;overflow:hidden;
@@ -245,13 +246,13 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
   @media (max-width:1100px){
     .kpis{grid-template-columns:repeat(2,1fr);}
-    #kpiRow{grid-template-columns:repeat(3,1fr);}
+    #kpiRow, #nominaKpiRow{grid-template-columns:repeat(3,1fr);}
     .grid{grid-template-columns:1fr;}
   }
   @media (max-width:640px){
     .app{padding:18px 14px 40px;}
     .kpis{grid-template-columns:repeat(2,1fr);}
-    #kpiRow{grid-template-columns:repeat(2,1fr);}
+    #kpiRow, #nominaKpiRow{grid-template-columns:repeat(2,1fr);}
     .topbar{align-items:flex-start;}
     .header-meta{text-align:left;}
   }
@@ -351,6 +352,8 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   }
   .dt-badge.max{background:var(--coral);color:#FFF6F5;}
   .dt-badge.min{background:var(--green);color:#F6FFF4;}
+  .scroll-table{max-height:520px;overflow:auto;}
+  .scroll-table thead th{position:sticky;top:0;z-index:2;}
   .export-btn{
     flex:0 0 auto;background:var(--teal);color:#FFFBF2;border:none;border-radius:9px;
     padding:8px 15px;font-family:'Inter';font-size:12.5px;font-weight:600;cursor:pointer;
@@ -448,13 +451,6 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
     </div>
 
-    <div class="panel" id="panelHoras">
-      <div class="panel-head">
-        <div class="panel-title">Horas extra por tipo (semanal)</div>
-        <div class="panel-tag" style="background:var(--orange-soft);color:var(--orange);">Costo laboral</div>
-      </div>
-      <div class="panel-body"><canvas id="chartHoras"></canvas></div>
-    </div>
 
     <div class="panel wide tall" id="panelTiempoMuerto">
       <div class="panel-head">
@@ -548,6 +544,99 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     <div class="closing-note">El % y los Kg de descarte se calculan siempre desde la hoja "Consolidado Post-cosecha" (Kg descartado / Kg cosechado). Los periodos con mayor y menor descarte del rango filtrado se resaltan en la tabla.</div>
   </div>
 
+
+  <div class="descarte-section" id="nominaSection">
+    <div class="descarte-head">
+      <div>
+        <div class="brand-eyebrow">Costos de nómina</div>
+        <div class="panel-title" style="font-size:19px;">Nómina de planta (códigos 77 y 251): costo total y costo por kg</div>
+      </div>
+      <div class="descarte-controls">
+        <div class="segmented" id="nominaGranSeg">
+          <button data-g="dia" class="active">Día</button>
+          <button data-g="semana">Semana</button>
+          <button data-g="mes">Mes</button>
+        </div>
+        <button type="button" id="exportNominaExcel" class="export-btn">⬇ Descargar Excel</button>
+      </div>
+    </div>
+    <div class="closing-note" id="nominaCobertura" style="margin:-6px 0 14px;"></div>
+
+    <div class="kpis" id="nominaKpiRow"></div>
+
+    <div class="descarte-chart-panel">
+      <div class="panel-head">
+        <div class="panel-title">Total costo nómina y costo por kg</div>
+        <div class="panel-tag" style="background:var(--gold-soft);color:var(--gold);">Base + horas extra</div>
+      </div>
+      <div class="panel-body" style="height:520px;"><canvas id="chartNominaDia"></canvas></div>
+      <div class="closing-note" style="margin-top:10px;">Las barras suman nómina base (personas × costo por día) y horas extra y recargos. La línea es el costo por kg: se calcula solo con los días que tienen kilos en "Indicadores de planta".</div>
+    </div>
+
+    <div class="descarte-table-wrap scroll-table">
+      <table class="descarte-table">
+        <thead><tr>
+          <th class="dt-left">Periodo</th><th>Personas</th><th>Nómina base</th><th>Extras y recargos</th><th>Total</th>
+          <th>Kg</th><th>Costo/kg</th><th>Personal prestado</th><th>Inasist.</th><th>Vacac.</th>
+        </tr></thead>
+        <tbody id="nominaTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="descarte-chart-panel" style="margin-top:18px;">
+      <div class="panel-head">
+        <div class="panel-title">Separación de costos por grupo</div>
+        <div class="panel-tag" style="background:var(--teal-soft);color:var(--teal);">Sin Producción (ya está arriba)</div>
+      </div>
+      <div class="panel-body" style="height:340px;"><canvas id="chartNominaGrupos"></canvas></div>
+    </div>
+    <div class="descarte-table-wrap">
+      <table class="descarte-table">
+        <thead><tr>
+          <th class="dt-left">Grupo</th><th>Códigos</th><th>Personas</th><th>Días-persona</th><th>Base</th><th>Extras y recargos</th><th>Total</th>
+        </tr></thead>
+        <tbody id="nominaGrupoBody"></tbody>
+      </table>
+    </div>
+    <div class="closing-note">Solo "Producción" (códigos 77 y 251) entra al total de nómina y al costo por kg. Los demás grupos se muestran aparte. En los grupos con costo por día sin definir (hoy gestores de calidad y supervisor) solo se ven las horas extra; la base queda en blanco hasta que la definas en la hoja de parámetros.</div>
+
+    <div class="descarte-chart-panel" style="margin-top:18px;">
+      <div class="panel-head">
+        <div class="panel-title">Quién más ha faltado</div>
+        <div class="panel-tag" style="background:var(--coral-soft);color:var(--coral);">Inasistencias y vacaciones</div>
+      </div>
+      <div class="panel-body" style="height:320px;"><canvas id="chartAusentismo"></canvas></div>
+    </div>
+    <div class="descarte-table-wrap">
+      <table class="descarte-table">
+        <thead><tr>
+          <th class="dt-left">Persona</th><th>Inasistencias (días)</th><th>Vacaciones (días)</th><th>Días en campo</th><th class="dt-left">Detalle en campo</th><th>Días registrados</th>
+        </tr></thead>
+        <tbody id="nominaPersonasBody"></tbody>
+      </table>
+    </div>
+
+    <div class="descarte-table-wrap" style="margin-top:18px;">
+      <table class="descarte-table">
+        <thead><tr>
+          <th class="dt-left">Actividad en campo (personal prestado)</th><th>Días-persona</th><th>Personas distintas</th><th>Días distintos</th>
+        </tr></thead>
+        <tbody id="nominaCampoBody"></tbody>
+      </table>
+    </div>
+    <div class="closing-note">Capacitación (código 8) se registra como 2 horas sobre otra labor del mismo día: cuenta en esta tabla, pero no suma un día aparte de costo.</div>
+
+    <div class="descarte-table-wrap" style="margin-top:18px;">
+      <table class="descarte-table">
+        <thead><tr>
+          <th class="dt-left">Tipo de hora (solo 77 y 251)</th><th>Horas</th><th>Valor</th>
+        </tr></thead>
+        <tbody id="nominaTiposBody"></tbody>
+      </table>
+    </div>
+    <div class="closing-note">Los valores salen de la hoja "Parametros nomina" (salario, divisor y recargo dominical vigentes en cada fecha). Si cambias esa hoja, el tablero se recalcula en la siguiente actualización.</div>
+  </div>
+
   <div class="closing-section" id="closingSection">
     <div class="closing-head">
       <div>
@@ -588,6 +677,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
 
 
+
 (function(){
   "use strict";
 
@@ -606,7 +696,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
   // ---------- state ----------
   var state = { start:null, end:null, years:new Set() };
-  var granState = { kgHombre: 'semana', kgHora: 'semana', descarte: 'mes' };
+  var granState = { kgHombre: 'semana', kgHora: 'semana', descarte: 'mes', nomina: 'dia' };
 
   var fStart = document.getElementById('fStart');
   var fEnd = document.getElementById('fEnd');
@@ -708,7 +798,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     DATA_MAX = DATA.daily.rows.length ? DATA.daily.rows[DATA.daily.rows.length-1][0] : (ALL_YEARS[0]+'-12-31');
 
     state.start = DATA_MIN; state.end = DATA_MAX; state.years = new Set(ALL_YEARS);
-    granState.kgHombre = 'semana'; granState.kgHora = 'semana'; granState.descarte = 'mes';
+    granState.kgHombre = 'semana'; granState.kgHora = 'semana'; granState.descarte = 'mes'; granState.nomina = 'dia';
 
     // rebuild year chips
     yearChipsWrap.querySelectorAll('.year-chip').forEach(function(c){ c.remove(); });
@@ -735,9 +825,10 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     populateWeekOptions();
     fMonth.value = ''; fWeek.value = '';
 
-    setToggleActive('toggleKgHombre','semana'); setToggleActive('toggleKgHora','semana'); setToggleActive('descarteGranSeg','mes');
+    setToggleActive('toggleKgHombre','semana'); setToggleActive('toggleKgHora','semana'); setToggleActive('descarteGranSeg','mes'); setToggleActive('nominaGranSeg','dia');
     document.getElementById('lastUpdate').textContent = 'Datos hasta ' + fmtDateLong(DATA_MAX);
 
+    buildNominaContext();
     populateClosingYears();
     renderClosing();
 
@@ -762,12 +853,12 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
   document.getElementById('resetBtn').addEventListener('click', function(){
     state.start = DATA_MIN; state.end = DATA_MAX; state.years = new Set(ALL_YEARS);
-    granState.kgHombre = 'semana'; granState.kgHora = 'semana'; granState.descarte = 'mes';
+    granState.kgHombre = 'semana'; granState.kgHora = 'semana'; granState.descarte = 'mes'; granState.nomina = 'dia';
     fStart.value = DATA_MIN; fEnd.value = DATA_MAX;
     fMonth.value = ''; fWeek.value = '';
     document.querySelectorAll('.year-chip').forEach(function(c){ c.classList.add('active'); });
     populateWeekOptions();
-    setToggleActive('toggleKgHombre','semana'); setToggleActive('toggleKgHora','semana'); setToggleActive('descarteGranSeg','mes');
+    setToggleActive('toggleKgHombre','semana'); setToggleActive('toggleKgHora','semana'); setToggleActive('descarteGranSeg','mes'); setToggleActive('nominaGranSeg','dia');
     render();
   });
 
@@ -786,6 +877,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   wireToggle('toggleKgHombre','kgHombre');
   wireToggle('toggleKgHora','kgHora');
   wireToggle('descarteGranSeg','descarte');
+  wireToggle('nominaGranSeg','nomina');
   function setToggleActive(id, gran){
     document.getElementById(id).querySelectorAll('button').forEach(function(b){
       b.classList.toggle('active', b.dataset.g===gran);
@@ -963,7 +1055,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     {key:'kgTotal', label:'Kg procesados (total)', accent:'gold'},
     {key:'kgHoraProm', label:'Kg/hora promedio', accent:'green'},
     {key:'descarteProm', label:'% Descarte promedio', accent:'coral'},
-    {key:'horasExtraTotal', label:'Horas extra (total periodo)', accent:'orange'},
+    {key:'costoKg', label:'Costo nómina por kg', accent:'orange'},
     {key:'operariosTotal', label:'Jornales/operarios (total)', accent:'blue'}
   ];
   kpiDefs.forEach(function(def){
@@ -1166,36 +1258,27 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     document.getElementById('rangePill').textContent = fmtDateLong(state.start) + '  →  ' + fmtDateLong(state.end);
 
     var dailyRows = filterDaily();
-    var weekSet = new Set(dailyRows.map(function(r){ return weekKey(r[i1.anio], r[i1.semana]); }));
-    var horasRows = filterHorasExtras(weekSet);
     var tmRows = filterByFecha(DATA.tiempo_muerto, i3);
     var pcRows = filterByFecha(DATA.post_cosecha, i4);
+    var nomRes = computeNomina(granState.nomina);
 
-    renderKPIs(dailyRows, horasRows, pcRows);
+    renderKPIs(dailyRows, pcRows, nomRes);
     renderKgHorasEduar(dailyRows, tmRows);
     renderTiempoMuertoSemana(dailyRows, tmRows);
     renderKgHombre(dailyRows);
     renderKgHora(dailyRows);
-    renderHoras(horasRows);
     renderTiempoMuertoCausas(tmRows);
     renderDescarteSection(pcRows);
+    renderNominaSection(nomRes);
     renderTable(dailyRows);
   }
 
-  function renderKPIs(dailyRows, horasRows, pcRows){
+  function renderKPIs(dailyRows, pcRows, nomRes){
     var kg=0, kgHoraSum=0, n=dailyRows.length;
     var operariosSum=0, operariosN=0;
     dailyRows.forEach(function(r){
       kg += r[i1.kg_dia]||0; kgHoraSum += r[i1.kg_hora]||0;
       if(r[i1.operarios]){ operariosSum += r[i1.operarios]; operariosN++; }
-    });
-    var horasExtraTotal = 0, rnSum=0, eoSum=0, rfSum=0, efSum=0;
-    horasRows.forEach(function(r){
-      horasExtraTotal += r[i2.horas_extras_total]||0;
-      rnSum += r[i2.recargo_nocturno]||0;
-      eoSum += r[i2.horas_extra_ordinarias]||0;
-      rfSum += r[i2.recargo_festivo]||0;
-      efSum += r[i2.horas_extra_festivas]||0;
     });
 
     // % y Kg de descarte: fuente autoritativa = Consolidado Post-cosecha
@@ -1209,8 +1292,12 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     setKpi('descarteProm', fmtPct(descartePct,1),
            fmtInt(mermaSum)+' kg descartados · ' + (descartePct > 0.04 ? 'por encima de meta (4%)' : 'dentro de meta'),
            descartePct>0.04?'down':'up');
-    setKpi('horasExtraTotal', fmtInt(horasExtraTotal),
-           'RN: '+fmtDec(rnSum,1)+' · EO: '+fmtDec(eoSum,1)+' · RF: '+fmtDec(rfSum,1)+' · EF: '+fmtDec(efSum,1)+' · '+horasRows.length+' sem.');
+    if(nomRes && nomRes.hay && nomRes.totals.costKg !== null){
+      setKpi('costoKg', '$'+fmtDec(nomRes.totals.costKg,1),
+             fmtMoney(nomRes.totals.costWithKg)+' de nómina · '+fmtInt(nomRes.totals.kg)+' kg');
+    } else {
+      setKpi('costoKg', '—', 'sin datos de nómina en este periodo');
+    }
     setKpi('operariosTotal', fmtInt(operariosSum), operariosN + ' días con dato de operarios');
   }
   function setKpi(key, val, sub, cls){
@@ -1711,6 +1798,421 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     });
   }
 
+  // ================= COSTOS DE NÓMINA =================
+  // Valores por defecto: si la hoja "Parametros nomina" no trae un código o una regla,
+  // se usan estos. Lo que venga en la hoja siempre manda.
+  var DEFAULT_COSTOS = [
+    {cod:77,  grupo:'Producción - Proceso nacional',      costo:122000, entra:true},
+    {cod:251, grupo:'Producción - Corrección de calidad', costo:122000, entra:true},
+    {cod:250, grupo:'Gestores de calidad',                costo:null,   entra:false},
+    {cod:5,   grupo:'Aseo - Personal reubicado',          costo:122000, entra:false},
+    {cod:280, grupo:'Aseo - Postcosecha',                 costo:122000, entra:false},
+    {cod:131, grupo:'Descarte de fruta',                  costo:122000, entra:false},
+    {cod:204, grupo:'Supervisor',                         costo:null,   entra:false},
+    {cod:6,   grupo:'Inasistencia',                       costo:0,      entra:false},
+    {cod:78,  grupo:'Vacaciones',                         costo:0,      entra:false},
+    {cod:22,  grupo:'Días en campo - Malezas',            costo:122000, entra:false},
+    {cod:23,  grupo:'Días en campo - Apoyo en almacén',   costo:122000, entra:false},
+    {cod:8,   grupo:'Días en campo - Capacitación',       costo:122000, entra:false},
+    {cod:142, grupo:'Días en campo - Desagüe de vías',    costo:122000, entra:false}
+  ];
+  var DEFAULT_VIGENCIAS = [
+    {desde:'2026-01-01', hasta:'2026-06-30', salario:1750905, divisor:220, dominical:0.80},
+    {desde:'2026-07-01', hasta:'2026-07-14', salario:1750905, divisor:220, dominical:0.90},
+    {desde:'2026-07-15', hasta:null,         salario:1750905, divisor:210, dominical:0.90}
+  ];
+  var DEFAULT_REGLAS = {cobrar_base_domingo:true, contar_recargos:true, rn_pct:0.35, hed_pct:0.25, hen_pct:0.75};
+  var HORA_KEYS = ['rn','hed','hen','rfn','rfd','fn','fd','hedf','henf'];
+  var HORA_NOMBRE = {
+    rn:'RN · Recargo nocturno', hed:'HED · Extra diurna', hen:'HEN · Extra nocturna',
+    rfn:'RFN · Recargo nocturno festivo', rfd:'RFD · Recargo festivo diurno',
+    fn:'FN · Festivo nocturno', fd:'FD · Festivo diurno',
+    hedf:'HEDF · Extra festiva diurna', henf:'HENF · Extra festiva nocturna'
+  };
+  var RECARGO_KEYS = {rn:1, rfd:1, rfn:1};
+  var GROUP_ORDER = ['Producción','Gestores de calidad','Aseo','Descarte de fruta','Supervisor','Días en campo','Vacaciones','Inasistencia'];
+  var NOM = null;
+
+  function parseISO(s){ var p = s.split('-'); return new Date(Date.UTC(+p[0], +p[1]-1, +p[2])); }
+  function toISO(d){ return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); }
+  function mondayOf(iso){ var d = parseISO(iso); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay()+6)%7)); return toISO(d); }
+  function isSunday(iso){ return parseISO(iso).getUTCDay() === 0; }
+  function fmtMoney(v){ return '$' + fmtInt(v); }
+  function famOf(grupo){ var g = String(grupo||'').split(' - ')[0].trim(); return g || 'Sin clasificar'; }
+  function actOf(grupo){ var p = String(grupo||'').split(' - '); return p.length>1 ? p.slice(1).join(' - ').trim() : p[0].trim(); }
+  function titleName(n){
+    var t = String(n||'').trim().split(/\s+/);
+    var short = t.length>=3 ? [t[0], t[2]] : t.slice(0,2);
+    return short.map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); }).join(' ');
+  }
+  function fullName(ced){
+    var n = (NOM.personas && NOM.personas[ced]) || ('Cédula '+ced);
+    return n.split(/\s+/).map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); }).join(' ');
+  }
+
+  function buildNominaContext(){
+    var nom = DATA.nomina || {fields:[], rows:[]};
+    var idx = {}; nom.fields.forEach(function(n,i){ idx[n] = i; });
+    var p = DATA.params_nomina || {};
+    var costos = {};
+    DEFAULT_COSTOS.forEach(function(c){ costos[c.cod] = c; });
+    (p.costos || []).forEach(function(c){ costos[c.cod] = c; });
+    var vig = (p.vigencias && p.vigencias.length) ? p.vigencias.slice() : DEFAULT_VIGENCIAS.slice();
+    vig.sort(function(a,b){ return a.desde < b.desde ? -1 : (a.desde > b.desde ? 1 : 0); });
+    var reglas = Object.assign({}, DEFAULT_REGLAS, p.reglas || {});
+    var kg = {}, mondayToSem = {};
+    DATA.daily.rows.forEach(function(r){
+      var f = r[i1.fecha];
+      kg[f] = (kg[f] || 0) + (r[i1.kg_dia] || 0);
+      mondayToSem[mondayOf(f)] = r[i1.semana];
+    });
+    var minF = null, maxF = null;
+    nom.rows.forEach(function(r){ var f = r[idx.fecha]; if(minF===null || f<minF) minF=f; if(maxF===null || f>maxF) maxF=f; });
+    NOM = {idx:idx, rows:nom.rows, personas:DATA.personas || {}, costos:costos, vig:vig, reglas:reglas,
+           kg:kg, mondayToSem:mondayToSem, rateCache:{}, minF:minF, maxF:maxF};
+  }
+
+  function infoFor(cod){
+    return NOM.costos[cod] || {cod:cod, grupo:'Sin clasificar', costo:0, entra:false};
+  }
+
+  // tarifa vigente en una fecha: hora base = salario / divisor; cada concepto = hora base x factor
+  function rateFor(fecha){
+    if(NOM.rateCache[fecha]) return NOM.rateCache[fecha];
+    var v = null;
+    for(var i=0; i<NOM.vig.length; i++){
+      var x = NOM.vig[i];
+      if(x.desde <= fecha && (!x.hasta || fecha <= x.hasta)) v = x;
+    }
+    if(!v) v = NOM.vig[NOM.vig.length-1];   // fecha fuera de toda vigencia: se usa la última conocida
+    var R = NOM.reglas, dom = v.dominical;
+    var out = {
+      base: v.divisor ? v.salario / v.divisor : 0,
+      factors: { rn:R.rn_pct, hed:1+R.hed_pct, hen:1+R.hen_pct, rfd:dom, rfn:R.rn_pct+dom,
+                 fd:1+dom, fn:1+R.rn_pct+dom, hedf:1+R.hed_pct+dom, henf:1+R.hen_pct+dom }
+    };
+    NOM.rateCache[fecha] = out;
+    return out;
+  }
+
+  // una "persona-día" = una cédula en una fecha. Si tiene varias filas ese día
+  // (p.ej. turno + 2 h de capacitación), el día base se cobra una sola vez, según la
+  // labor con más horas ordinarias; las horas extra de todas sus filas sí se suman.
+  function computeNominaDays(){
+    var I = NOM.idx, R = NOM.rows, groups = {}, order = [];
+    for(var k=0; k<R.length; k++){
+      var r = R[k], fecha = r[I.fecha];
+      if(fecha < state.start || fecha > state.end) continue;
+      if(!state.years.has(+fecha.slice(0,4))) continue;
+      var key = r[I.cedula] + '|' + fecha;
+      if(!groups[key]){ groups[key] = {fecha:fecha, cedula:r[I.cedula], rows:[]}; order.push(key); }
+      groups[key].rows.push(r);
+    }
+    return order.map(function(key){
+      var g = groups[key], primary = g.rows[0], maxOrd = -1;
+      g.rows.forEach(function(r){ var o = r[I.ord] || 0; if(o > maxOrd){ maxOrd = o; primary = r; } });
+      var info = infoFor(primary[I.cod]);
+      var rate = rateFor(g.fecha), extras = 0, extrasHrs = 0, hrsByKey = {}, valByKey = {};
+      var campoActs = [], inasist = false, vac = false;
+      g.rows.forEach(function(r){
+        var inf = infoFor(r[I.cod]), fam = famOf(inf.grupo);
+        if(fam === 'Días en campo') campoActs.push(actOf(inf.grupo));
+        if(r[I.cod] === 6 || fam === 'Inasistencia') inasist = true;
+        if(r[I.cod] === 78 || fam === 'Vacaciones') vac = true;
+        HORA_KEYS.forEach(function(k2){
+          var h = r[I[k2]] || 0;
+          if(!h) return;
+          if(!NOM.reglas.contar_recargos && RECARGO_KEYS[k2]) return;
+          var v = h * rate.base * rate.factors[k2];
+          extras += v; extrasHrs += h;
+          hrsByKey[k2] = (hrsByKey[k2] || 0) + h;
+          valByKey[k2] = (valByKey[k2] || 0) + v;
+        });
+      });
+      var base = info.costo == null ? 0 : info.costo;
+      if(isSunday(g.fecha) && !NOM.reglas.cobrar_base_domingo) base = 0;
+      return {fecha:g.fecha, cedula:g.cedula, cod:primary[I.cod], familia:famOf(info.grupo), entra:!!info.entra,
+              costoDefinido: info.costo != null, base:base, extras:extras, extrasHrs:extrasHrs,
+              hrsByKey:hrsByKey, valByKey:valByKey, campoActs:campoActs, inasist:inasist, vac:vac};
+    });
+  }
+
+  function nominaPeriodKey(fecha, gran){
+    var mi = +fecha.slice(5,7) - 1, yy = fecha.slice(2,4);
+    if(gran === 'mes') return {key:fecha.slice(0,7), label:MES_ABR[mi]+" '"+yy};
+    if(gran === 'semana'){
+      var m = mondayOf(fecha), s = NOM.mondayToSem[m];
+      return {key:m, label: s !== undefined ? 'S'+s+" '"+yy : 'Sem '+m.slice(8,10)+'/'+m.slice(5,7)};
+    }
+    return {key:fecha, label:(+fecha.slice(8,10))+' '+MES_ABR[mi]};
+  }
+
+  function computeNomina(gran){
+    var res = {hay:false, periods:[], groups:[], personas:[], campo:[], tipos:[], totals:null, diasRango:0};
+    if(!NOM || !NOM.rows.length) return res;
+    var days = computeNominaDays();
+    var periods = {}, pOrder = [], dayCost = {}, dayHas = {}, groups = {}, personas = {}, campo = {}, tipos = {};
+    days.forEach(function(d){
+      dayHas[d.fecha] = true;
+      var pk = nominaPeriodKey(d.fecha, gran), per = periods[pk.key];
+      if(!per){
+        per = periods[pk.key] = {key:pk.key, label:pk.label, personas:0, base:0, extras:0, extrasHrs:0,
+                                 campo:0, inasist:0, vac:0, fechas:{}, kg:0, costWithKg:0, costNoKg:0, diasSinKg:0};
+        pOrder.push(pk.key);
+      }
+      per.fechas[d.fecha] = true;
+      if(d.entra){
+        per.personas++; per.base += d.base; per.extras += d.extras; per.extrasHrs += d.extrasHrs;
+        dayCost[d.fecha] = (dayCost[d.fecha] || 0) + d.base + d.extras;
+        HORA_KEYS.forEach(function(k2){
+          if(d.hrsByKey[k2]){ var t = tipos[k2] || (tipos[k2] = {hrs:0, val:0}); t.hrs += d.hrsByKey[k2]; t.val += d.valByKey[k2]; }
+        });
+      }
+      if(d.campoActs.length) per.campo++;
+      if(d.inasist) per.inasist++;
+      if(d.vac) per.vac++;
+
+      var g = groups[d.familia] || (groups[d.familia] = {familia:d.familia, codes:{}, personas:{}, dias:0, base:0, extras:0, sinDefinir:false});
+      g.codes[d.cod] = true; g.personas[d.cedula] = true; g.dias++; g.base += d.base; g.extras += d.extras;
+      if(!d.costoDefinido) g.sinDefinir = true;
+
+      var pe = personas[d.cedula] || (personas[d.cedula] = {cedula:d.cedula, dias:0, inasist:0, vac:0, campo:0, campoDet:{}});
+      pe.dias++;
+      if(d.inasist) pe.inasist++;
+      if(d.vac) pe.vac++;
+      if(d.campoActs.length){
+        pe.campo++;
+        d.campoActs.forEach(function(a){
+          pe.campoDet[a] = (pe.campoDet[a] || 0) + 1;
+          var c = campo[a] || (campo[a] = {actividad:a, dias:0, personas:{}, fechas:{}});
+          c.dias++; c.personas[d.cedula] = true; c.fechas[d.fecha] = true;
+        });
+      }
+    });
+
+    pOrder.sort();
+    var tot = {base:0, extras:0, personDays:0, extrasHrs:0, kg:0, costWithKg:0, costNoKg:0, diasSinKg:0, diasConKg:0};
+    var plist = pOrder.map(function(key){
+      var per = periods[key];
+      Object.keys(per.fechas).forEach(function(f){
+        var kgd = NOM.kg[f] || 0, cd = dayCost[f] || 0;
+        if(kgd > 0){ per.kg += kgd; per.costWithKg += cd; tot.diasConKg++; }
+        else if(cd > 0){ per.costNoKg += cd; per.diasSinKg++; }
+      });
+      per.total = per.base + per.extras;
+      per.costKg = per.kg > 0 ? per.costWithKg / per.kg : null;
+      tot.base += per.base; tot.extras += per.extras; tot.personDays += per.personas; tot.extrasHrs += per.extrasHrs;
+      tot.kg += per.kg; tot.costWithKg += per.costWithKg; tot.costNoKg += per.costNoKg; tot.diasSinKg += per.diasSinKg;
+      return per;
+    });
+    tot.total = tot.base + tot.extras;
+    tot.costKg = tot.kg > 0 ? tot.costWithKg / tot.kg : null;
+    tot.dias = Object.keys(dayHas).length;
+
+    var glist = Object.keys(groups).map(function(f){
+      var g = groups[f];
+      return {familia:f, codes:Object.keys(g.codes).map(Number).sort(function(a,b){return a-b;}),
+              personas:Object.keys(g.personas).length, dias:g.dias, base:g.base, extras:g.extras,
+              total:g.base+g.extras, sinDefinir:g.sinDefinir};
+    }).sort(function(a,b){
+      var ia = GROUP_ORDER.indexOf(a.familia), ib = GROUP_ORDER.indexOf(b.familia);
+      ia = ia<0 ? 99 : ia; ib = ib<0 ? 99 : ib;
+      return ia - ib;
+    });
+
+    var perlist = Object.keys(personas).map(function(c){ return personas[c]; })
+      .filter(function(p){ return p.inasist || p.vac || p.campo; })
+      .sort(function(a,b){ return (b.inasist-a.inasist) || (b.vac-a.vac) || (b.campo-a.campo); });
+
+    var clist = Object.keys(campo).map(function(a){
+      var c = campo[a];
+      return {actividad:a, dias:c.dias, personas:Object.keys(c.personas).length, diasDistintos:Object.keys(c.fechas).length};
+    }).sort(function(a,b){ return b.dias - a.dias; });
+
+    var tlist = HORA_KEYS.filter(function(k2){ return tipos[k2]; }).map(function(k2){
+      return {key:k2, nombre:HORA_NOMBRE[k2], hrs:tipos[k2].hrs, val:tipos[k2].val};
+    });
+
+    res.hay = days.length > 0;
+    res.periods = plist; res.groups = glist; res.personas = perlist; res.campo = clist; res.tipos = tlist;
+    res.totals = tot; res.diasRango = tot.dias;
+    return res;
+  }
+
+  var nominaKpiRow = document.getElementById('nominaKpiRow');
+  if(nominaKpiRow){
+    [{key:'nomBase', label:'Nómina base (77+251)', accent:'blue'},
+     {key:'nomExtras', label:'Horas extra y recargos', accent:'orange'},
+     {key:'nomTotal', label:'Total costo nómina', accent:'gold'},
+     {key:'nomCostoKg', label:'Costo por kg', accent:'green'},
+     {key:'nomPersDia', label:'Personas-día (77+251)', accent:'teal'}
+    ].forEach(function(def){
+      var card = document.createElement('div');
+      card.className = 'kpi-card';
+      card.style.setProperty('--accent', COLORS[def.accent]);
+      card.innerHTML = '<div class="kpi-label">'+def.label+'</div>' +
+                       '<div class="kpi-value" id="kpi-'+def.key+'">—</div>' +
+                       '<div class="kpi-sub" id="kpi-'+def.key+'-sub"></div>';
+      nominaKpiRow.appendChild(card);
+    });
+  }
+
+  function renderNominaSection(res){
+    var sec = document.getElementById('nominaSection');
+    if(!sec) return;
+    var cob = document.getElementById('nominaCobertura');
+    var T = res.totals;
+    var vacio = '<tr><td colspan="10" style="text-align:center;color:var(--text-dim);padding:16px;">Sin datos de nómina para el periodo seleccionado</td></tr>';
+
+    if(!NOM || !NOM.rows.length){
+      cob.textContent = 'Todavía no hay datos de nómina: crea la hoja "Nomina diaria" en tu Excel y pega ahí los reportes semanales.';
+    } else {
+      cob.textContent = 'Nómina cargada del ' + fmtDateLong(NOM.minF) + ' al ' + fmtDateLong(NOM.maxF) +
+        ' · en el periodo filtrado: ' + (res.hay ? res.diasRango + ' días con registros' : 'sin registros de nómina');
+    }
+
+    if(!res.hay){
+      ['nomBase','nomExtras','nomTotal','nomCostoKg','nomPersDia'].forEach(function(k){ setDescarteKpi(k, '—', 'sin datos de nómina en este periodo'); });
+      ['nominaTableBody','nominaGrupoBody','nominaPersonasBody','nominaCampoBody','nominaTiposBody'].forEach(function(id){ document.getElementById(id).innerHTML = vacio; });
+      ['chartNominaDia','chartNominaGrupos','chartAusentismo'].forEach(function(id){
+        upsertChart(id, {type:'bar', data:{labels:[], datasets:[{data:[]}]}, options:chartOpts({}, false, false)}, null);
+      });
+      window.__nominaRes = null;
+      return;
+    }
+
+    setDescarteKpi('nomBase', fmtMoney(T.base), fmtInt(T.personDays)+' personas-día × costo por día');
+    setDescarteKpi('nomExtras', fmtMoney(T.extras), fmtDec(T.extrasHrs,1)+' horas de extras y recargos');
+    setDescarteKpi('nomTotal', fmtMoney(T.total), 'solo códigos 77 y 251');
+    setDescarteKpi('nomCostoKg', T.costKg===null ? '—' : '$'+fmtDec(T.costKg,1),
+      T.kg>0 ? fmtInt(T.kg)+' kg · '+T.diasConKg+' días con kilos' : 'sin kilos en estos días');
+    setDescarteKpi('nomPersDia', fmtInt(T.personDays), 'promedio '+fmtDec(T.dias ? T.personDays/T.dias : 0, 1)+' por día');
+    if(T.diasSinKg > 0){
+      var sub = document.getElementById('kpi-nomCostoKg-sub');
+      sub.textContent += ' · '+fmtMoney(T.costNoKg)+' en '+T.diasSinKg+' días sin kilos (fuera del costo/kg)';
+    }
+
+    var P = res.periods;
+    var totales = P.map(function(p){ return p.total; });
+    var maxTot = Math.max.apply(null, totales.concat([1]));
+    var maxCk = Math.max.apply(null, P.map(function(p){ return p.costKg || 0; }).concat([1]));
+    upsertChart('chartNominaDia', {
+      data:{ labels:P.map(function(p){return p.label;}), datasets:[
+        {type:'bar', label:'Nómina base (77+251)', data:P.map(function(p){return p.base;}), backgroundColor:'rgba(60,102,144,0.78)', borderRadius:2, stack:'nom', yAxisID:'y', order:2},
+        {type:'bar', label:'Horas extra y recargos', data:P.map(function(p){return p.extras;}), backgroundColor:'rgba(177,94,23,0.85)', borderRadius:2, stack:'nom', yAxisID:'y', order:2},
+        {type:'line', label:'Costo por kg ($/kg)', data:P.map(function(p){return p.costKg;}), borderColor:COLORS.green, backgroundColor:COLORS.green, pointRadius:3, pointBackgroundColor:COLORS.green, pointBorderColor:'#FFFFFF', pointBorderWidth:1, tension:.25, borderWidth:2.5, yAxisID:'y1', order:1}
+      ]},
+      options: chartOpts({
+        x:{stacked:true},
+        y:{stacked:true, min:0, max:maxTot*2.3, grid:baseGrid(),
+           ticks:{callback:function(v){ return v <= maxTot*1.12 ? '$'+fmtCompact(v) : ''; }}},
+        y1:{position:'right', min:-maxCk*1.4, max:maxCk*1.55, grid:{display:false},
+            ticks:{callback:function(v){ return (v >= 0 && v <= maxCk*1.15) ? '$'+fmtDec(v,0) : ''; }}}
+      }, true, false, 12, P.length)
+    }, {
+      enabled:true, minSpacing:16,
+      series:[
+        {index:1, formatter:function(v,i){ return fmtMoney(totales[i]); }, color:'#F3EFE3', yOffset:-8, vertical:true, dx:-7, minSpacing:16},
+        {index:2, formatter:function(v){ return '$'+fmtDec(v,1); }, color:'#DFF3D9', yOffset:-8, vertical:true, dx:9, minSpacing:16}
+      ]
+    });
+
+    // tabla por periodo (resalta el costo/kg más alto y el más bajo)
+    var conCosto = P.filter(function(p){ return p.costKg !== null; });
+    var maxP = null, minP = null;
+    if(conCosto.length >= 3){
+      conCosto.forEach(function(p){ if(!maxP || p.costKg>maxP.costKg) maxP=p; if(!minP || p.costKg<minP.costKg) minP=p; });
+    }
+    document.getElementById('nominaTableBody').innerHTML = P.map(function(p){
+      var cls = '', badge = '';
+      if(maxP && p.key===maxP.key){ cls=' class="dt-max"'; badge=' <span class="dt-badge max">Más caro</span>'; }
+      else if(minP && p.key===minP.key){ cls=' class="dt-min"'; badge=' <span class="dt-badge min">Más barato</span>'; }
+      return '<tr'+cls+'><td class="dt-left">'+p.label+badge+'</td><td>'+fmtInt(p.personas)+'</td><td>'+fmtMoney(p.base)+'</td><td>'+fmtMoney(p.extras)+'</td><td>'+fmtMoney(p.total)+'</td>' +
+             '<td>'+(p.kg>0?fmtInt(p.kg):'—')+'</td><td>'+(p.costKg!==null?'$'+fmtDec(p.costKg,1):'—')+'</td>' +
+             '<td>'+(p.campo||'—')+'</td><td>'+(p.inasist||'—')+'</td><td>'+(p.vac||'—')+'</td></tr>';
+    }).join('');
+
+    // separación por grupo
+    var G = res.groups.filter(function(g){ return g.familia !== 'Producción'; });
+    upsertChart('chartNominaGrupos', {
+      type:'bar',
+      data:{ labels:G.map(function(g){return g.familia;}), datasets:[
+        {label:'Base', data:G.map(function(g){return g.base;}), backgroundColor:'rgba(60,102,144,0.78)', borderRadius:2, stack:'g'},
+        {label:'Horas extra y recargos', data:G.map(function(g){return g.extras;}), backgroundColor:'rgba(177,94,23,0.85)', borderRadius:2, stack:'g'}
+      ]},
+      options: chartOpts({ x:{stacked:true}, y:{stacked:true, grid:baseGrid(), ticks:{callback:function(v){return '$'+fmtCompact(v);}}} }, true, false, 40, G.length)
+    }, {
+      enabled:true, minSpacing:60,
+      series:[{index:1, formatter:function(v,i){
+        var g = G[i];
+        return (g.sinDefinir ? 'base sin definir' : fmtMoney(g.total)) + ' · ' + g.dias + ' d';
+      }, color:'#F3EFE3', yOffset:-9, minSpacing:60, font:"600 9px 'IBM Plex Mono', monospace"}]
+    });
+    document.getElementById('nominaGrupoBody').innerHTML = G.map(function(g){
+      return '<tr><td class="dt-left">'+g.familia+'</td><td>'+g.codes.join(', ')+'</td><td>'+g.personas+'</td><td>'+fmtInt(g.dias)+'</td>' +
+             '<td>'+(g.sinDefinir?'—':fmtMoney(g.base))+'</td><td>'+(g.extras?fmtMoney(g.extras):'—')+'</td>' +
+             '<td>'+(g.sinDefinir?'base sin definir':fmtMoney(g.total))+'</td></tr>';
+    }).join('');
+
+    // ausentismo
+    var top = res.personas.filter(function(p){ return p.inasist || p.vac; }).slice(0,10);
+    upsertChart('chartAusentismo', {
+      type:'bar',
+      data:{ labels:top.map(function(p){return titleName(NOM.personas[p.cedula]);}), datasets:[
+        {label:'Inasistencias (días)', data:top.map(function(p){return p.inasist;}), backgroundColor:COLORS.coral, borderRadius:3},
+        {label:'Vacaciones (días)', data:top.map(function(p){return p.vac;}), backgroundColor:COLORS.gold, borderRadius:3}
+      ]},
+      options: chartOpts({ y:{grid:baseGrid(), ticks:{precision:0}} }, true, false, 30, top.length)
+    }, {
+      enabled:true, minSpacing:40,
+      series:[
+        {index:0, formatter:function(v){ return v ? String(v) : ''; }, color:'#F8D9D5', yOffset:-8, dx:-12, minSpacing:30},
+        {index:1, formatter:function(v){ return v ? String(v) : ''; }, color:'#F6E7C4', yOffset:-8, dx:12, minSpacing:30}
+      ]
+    });
+    document.getElementById('nominaPersonasBody').innerHTML = res.personas.slice(0,40).map(function(p){
+      var det = Object.keys(p.campoDet).map(function(a){ return a+' '+p.campoDet[a]; }).join(' · ');
+      return '<tr><td class="dt-left">'+fullName(p.cedula)+'</td><td>'+(p.inasist||'—')+'</td><td>'+(p.vac||'—')+'</td><td>'+(p.campo||'—')+'</td>' +
+             '<td class="dt-left" style="font-family:Inter;">'+(det||'—')+'</td><td>'+p.dias+'</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:16px;">Nadie con inasistencias, vacaciones o días en campo en este periodo</td></tr>';
+    document.getElementById('nominaCampoBody').innerHTML = res.campo.map(function(c){
+      return '<tr><td class="dt-left">'+c.actividad+'</td><td>'+c.dias+'</td><td>'+c.personas+'</td><td>'+c.diasDistintos+'</td></tr>';
+    }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:16px;">Sin personal prestado en este periodo</td></tr>';
+
+    document.getElementById('nominaTiposBody').innerHTML = res.tipos.map(function(t){
+      return '<tr><td class="dt-left">'+t.nombre+'</td><td>'+fmtDec(t.hrs,1)+'</td><td>'+fmtMoney(t.val)+'</td></tr>';
+    }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:16px;">Sin horas extra ni recargos</td></tr>';
+
+    window.__nominaRes = res;
+  }
+
+  var exportNominaBtn = document.getElementById('exportNominaExcel');
+  if(exportNominaBtn){
+    exportNominaBtn.addEventListener('click', function(){
+      var res = window.__nominaRes;
+      if(!window.XLSX || !res) return;
+      var gl = {dia:'Día', semana:'Semana', mes:'Mes'}[granState.nomina] || 'Periodo';
+      var h1 = res.periods.map(function(p){ var o = {}; o[gl]=p.label; o['Personas (77+251)']=p.personas; o['Nómina base']=Math.round(p.base);
+        o['Extras y recargos']=Math.round(p.extras); o['Total']=Math.round(p.total); o['Kg']=Math.round(p.kg);
+        o['Costo por kg']=p.costKg===null?'':+p.costKg.toFixed(1); o['Personal prestado']=p.campo; o['Inasistencias']=p.inasist; o['Vacaciones']=p.vac; return o; });
+      var h2 = res.groups.map(function(g){ return {'Grupo':g.familia,'Códigos':g.codes.join(', '),'Personas':g.personas,'Días-persona':g.dias,
+        'Base':g.sinDefinir?'':Math.round(g.base),'Extras y recargos':Math.round(g.extras),'Total':g.sinDefinir?'base sin definir':Math.round(g.total)}; });
+      var h3 = res.personas.map(function(p){ return {'Persona':fullName(p.cedula),'Cédula':p.cedula,'Inasistencias (días)':p.inasist,'Vacaciones (días)':p.vac,
+        'Días en campo':p.campo,'Detalle en campo':Object.keys(p.campoDet).map(function(a){return a+' '+p.campoDet[a];}).join(' · '),'Días registrados':p.dias}; });
+      var h4 = res.campo.map(function(c){ return {'Actividad en campo':c.actividad,'Días-persona':c.dias,'Personas distintas':c.personas,'Días distintos':c.diasDistintos}; });
+      var h5 = res.tipos.map(function(t){ return {'Tipo de hora (77+251)':t.nombre,'Horas':+t.hrs.toFixed(1),'Valor':Math.round(t.val)}; });
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(h1), 'Detalle por periodo');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(h2), 'Costos por grupo');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(h3), 'Ausentismo y campo');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(h4), 'Personal prestado');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(h5), 'Tipos de hora extra');
+      var t = new Date();
+      XLSX.writeFile(wb, 'Costos_nomina_'+t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')+'.xlsx');
+    });
+  }
+
+
   function boot(){
     if(!window.Chart){ setTimeout(boot, 60); return; }
     var embedded = JSON.parse(document.getElementById('app-data').textContent);
@@ -1722,7 +2224,9 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
 
 
+
 </script>
+
 
 
 
