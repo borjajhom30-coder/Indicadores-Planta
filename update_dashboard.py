@@ -22,10 +22,12 @@ nunca quedan escritas en este archivo):
                            la raíz y luego dentro de la carpeta "Planta".
 """
 import os
+import re
 import sys
 import json
 import time
 import datetime
+import unicodedata
 import requests
 import openpyxl
 from io import BytesIO
@@ -147,6 +149,180 @@ def time_to_hours(t):
     if isinstance(t, (int, float)):
         return round(t, 3)
     return 0
+
+
+# ================= NÓMINA DIARIA + PARÁMETROS =================
+
+def _norm(s):
+    """minúsculas, sin tildes y con espacios simples (para comparar encabezados)"""
+    s = unicodedata.normalize("NFKD", str(s if s is not None else "")).encode("ascii", "ignore").decode()
+    return re.sub(r"\s+", " ", s).strip().lower()
+
+
+def _find_sheet(wb, wanted):
+    for name in wb.sheetnames:
+        if _norm(name) == wanted:
+            return wb[name]
+    return None
+
+
+def _to_float(v):
+    """número desde celda: vacío / espacio / texto raro -> 0; admite coma decimal"""
+    if v is None or isinstance(v, bool):
+        return 0.0
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip().replace(",", ".")
+    if not s:
+        return 0.0
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
+def _to_date(v):
+    if isinstance(v, datetime.datetime):
+        return v.date()
+    if isinstance(v, datetime.date):
+        return v
+    if isinstance(v, str):
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+            try:
+                return datetime.datetime.strptime(v.strip(), fmt).date()
+            except ValueError:
+                pass
+    return None
+
+
+NOMINA_COLS = {
+    "fecha": "fecha", "cedula": "cedula", "nombre completo": "nombre",
+    "codigo labor": "cod", "horas ordinarias": "ord",
+    "rn": "rn", "hed": "hed", "hen": "hen", "rfn": "rfn", "rfd": "rfd",
+    "fn": "fn", "fd": "fd", "hedf": "hedf", "henf": "henf",
+}
+NOMINA_FIELDS = ["fecha", "cedula", "cod", "ord", "rn", "hed", "hen", "rfn", "rfd", "fn", "fd", "hedf", "henf"]
+
+
+def extract_nomina(wb):
+    """Lee la hoja 'Nomina diaria' (reportes semanales pegados uno debajo del otro).
+    - encuentra el encabezado por nombre de columna (no por posición)
+    - salta filas vacías y encabezados repetidos
+    - descarta solo filas IDÉNTICAS (cédula+fecha+hora inicio+hora final+código):
+      una misma persona puede tener 2 filas el mismo día (p.ej. turno + capacitación)
+    """
+    vacio = {"fields": NOMINA_FIELDS, "rows": []}
+    ws = _find_sheet(wb, "nomina diaria")
+    if ws is None:
+        log('AVISO: no encontré la hoja "Nomina diaria". El panel de costos de nómina quedará vacío.')
+        return vacio, {}
+    colmap, rows, personas, vistos = {}, [], {}, set()
+    descartadas = {"sin_fecha": 0, "sin_cedula": 0, "sin_codigo": 0, "repetidas": 0}
+    for r in ws.iter_rows(values_only=True):
+        celdas = [_norm(c) for c in r]
+        if "fecha" in celdas and "codigo labor" in celdas:      # encabezado (o encabezado repetido)
+            colmap = {}
+            for idx, c in enumerate(celdas):
+                if c in NOMINA_COLS:
+                    colmap[NOMINA_COLS[c]] = idx
+                elif c == "hora inicio":
+                    colmap["h_ini"] = idx
+                elif c == "hora final":
+                    colmap["h_fin"] = idx
+            continue
+        if not colmap:
+            continue
+        get = lambda k: r[colmap[k]] if k in colmap and colmap[k] < len(r) else None
+        if all(c is None or (isinstance(c, str) and not c.strip()) for c in r):
+            continue
+        fecha = _to_date(get("fecha"))
+        if fecha is None:
+            if _to_float(get("cedula")):          # tiene cédula pero fecha ilegible: avisar
+                descartadas["sin_fecha"] += 1
+            continue                              # (filas tipo "JORNAL" o de relleno: se saltan en silencio)
+        cedula = int(_to_float(get("cedula")))
+        if not cedula:
+            descartadas["sin_cedula"] += 1
+            continue
+        cod = int(_to_float(get("cod")))
+        if not cod:
+            descartadas["sin_codigo"] += 1
+            continue
+        clave = (cedula, fecha, str(get("h_ini")).strip(), str(get("h_fin")).strip(), cod)
+        if clave in vistos:
+            descartadas["repetidas"] += 1
+            continue
+        vistos.add(clave)
+        nombre = re.sub(r"\s+", " ", str(get("nombre") or "")).strip()
+        if nombre:
+            personas[str(cedula)] = nombre
+        horas = [round(_to_float(get(k)), 2) for k in NOMINA_FIELDS[3:]]
+        rows.append([fecha.isoformat(), cedula, cod] + horas)
+    rows.sort(key=lambda x: (x[0], x[1], x[2]))
+    log(f"Nomina diaria: {len(rows)} registros, {len(personas)} personas"
+        + (f", {rows[0][0]} a {rows[-1][0]}" if rows else "")
+        + f" | descartadas: {descartadas}")
+    return {"fields": NOMINA_FIELDS, "rows": rows}, personas
+
+
+def _as_pct(v):
+    x = _to_float(v)
+    return x / 100.0 if x > 1.5 else x
+
+
+def extract_params_nomina(wb):
+    """Lee la hoja 'Parametros nomina' por títulos de sección. Si falta algo, el
+    tablero usa valores por defecto (ver DEFAULT_PARAMS en la plantilla)."""
+    params = {"costos": [], "vigencias": [], "reglas": {}}
+    ws = _find_sheet(wb, "parametros nomina")
+    if ws is None:
+        log('AVISO: no encontré la hoja "Parametros nomina"; se usarán los valores por defecto.')
+        return params
+    filas = [list(r) for r in ws.iter_rows(values_only=True)]
+    seccion = None
+    for r in filas:
+        a = r[0] if r else None
+        na = _norm(a)
+        if na.startswith("costo por dia por codigo"):
+            seccion = "costos"; continue
+        if na.startswith("tarifas de horas extra"):
+            seccion = "vigencias"; continue
+        if na.startswith("reglas de calculo"):
+            seccion = "reglas"; continue
+        if na.startswith("referencia"):
+            seccion = None; continue
+        if seccion == "costos":
+            if isinstance(a, (int, float)) and not isinstance(a, bool):
+                costo = r[2] if len(r) > 2 else None
+                entra = _norm(r[3] if len(r) > 3 else "") == "si"
+                params["costos"].append({
+                    "cod": int(a), "grupo": str(r[1] or "").strip(),
+                    "costo": (None if costo is None or str(costo).strip() == "" else _to_float(costo)),
+                    "entra": entra})
+        elif seccion == "vigencias":
+            desde = _to_date(a)
+            if desde:
+                hasta = _to_date(r[1] if len(r) > 1 else None)
+                params["vigencias"].append({
+                    "desde": desde.isoformat(), "hasta": hasta.isoformat() if hasta else None,
+                    "salario": _to_float(r[2] if len(r) > 2 else 0),
+                    "divisor": _to_float(r[3] if len(r) > 3 else 0),
+                    "dominical": _as_pct(r[4] if len(r) > 4 else 0)})
+        elif seccion == "reglas":
+            if na and len(r) > 1 and r[1] is not None and na != "regla":
+                v = r[1]
+                if "domingos y festivos" in na:
+                    params["reglas"]["cobrar_base_domingo"] = _norm(v) == "si"
+                elif "recargos" in na:
+                    params["reglas"]["contar_recargos"] = _norm(v) == "si"
+                elif na.startswith("recargo nocturno"):
+                    params["reglas"]["rn_pct"] = _as_pct(v)
+                elif "extra diurna" in na:
+                    params["reglas"]["hed_pct"] = _as_pct(v)
+                elif "extra nocturna" in na:
+                    params["reglas"]["hen_pct"] = _as_pct(v)
+    log(f"Parametros nomina: {len(params['costos'])} códigos, {len(params['vigencias'])} vigencias, reglas={params['reglas']}")
+    return params
 
 
 def extract_data(file_bytes):
@@ -272,7 +448,13 @@ def extract_data(file_bytes):
         rowsE.pop()
     log(f"TiempoE: {len(rowsE)} filas")
 
+    nomina, personas = extract_nomina(wb)
+    params_nomina = extract_params_nomina(wb)
+
     return {
+        "nomina": nomina,
+        "personas": personas,
+        "params_nomina": params_nomina,
         "daily": {"fields": fields1, "rows": rows1},
         "horas_extras": {"fields": fields2, "rows": rows2},
         "tiempo_muerto": {"fields": fields3, "rows": rows3},
