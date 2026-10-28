@@ -352,6 +352,8 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   }
   .dt-badge.max{background:var(--coral);color:#FFF6F5;}
   .dt-badge.min{background:var(--green);color:#F6FFF4;}
+  .mini-btn{background:var(--bg-input);border:1px solid var(--border-strong);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;color:var(--text-secondary);}
+  .mini-btn:hover{border-color:var(--gold);color:var(--text-primary);}
   .scroll-table{max-height:520px;overflow:auto;}
   .scroll-table thead th{position:sticky;top:0;z-index:2;}
   .export-btn{
@@ -552,6 +554,11 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
         <div class="panel-title" style="font-size:19px;">Nómina de planta (códigos 77 y 251): costo total y costo por kg</div>
       </div>
       <div class="descarte-controls">
+        <div class="filter-group" id="nominaRango">
+          <label>Desde</label><input type="date" id="nomDesde">
+          <label>Hasta</label><input type="date" id="nomHasta">
+          <button type="button" class="mini-btn" id="nomRangoTodo" title="Volver al rango completo que permiten los filtros de arriba">↺</button>
+        </div>
         <div class="segmented" id="nominaGranSeg">
           <button data-g="dia" class="active">Día</button>
           <button data-g="semana">Semana</button>
@@ -570,7 +577,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
         <div class="panel-tag" style="background:var(--gold-soft);color:var(--gold);">Base + horas extra</div>
       </div>
       <div class="panel-body" style="height:520px;"><canvas id="chartNominaDia"></canvas></div>
-      <div class="closing-note" style="margin-top:10px;">Las barras suman nómina base (personas × costo por día) y horas extra y recargos. La línea es el costo por kg: se calcula solo con los días que tienen kilos en "Indicadores de planta".</div>
+      <div class="closing-note" style="margin-top:10px;">Las barras suman nómina base (personas × costo por día) y horas extra y recargos; las barras moradas son domingos o festivos. La línea es el costo por kg: se calcula solo con los días que tienen kilos en "Indicadores de planta". El Desde/Hasta de este panel solo acota esta sección.</div>
     </div>
 
     <div class="descarte-table-wrap scroll-table">
@@ -1260,9 +1267,11 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     var dailyRows = filterDaily();
     var tmRows = filterByFecha(DATA.tiempo_muerto, i3);
     var pcRows = filterByFecha(DATA.post_cosecha, i4);
-    var nomRes = computeNomina(granState.nomina);
+    syncNominaRange();
+    var nomGlobal = computeNomina('mes', false);
+    var nomRes = computeNomina(granState.nomina, true);
 
-    renderKPIs(dailyRows, pcRows, nomRes);
+    renderKPIs(dailyRows, pcRows, nomGlobal);
     renderKgHorasEduar(dailyRows, tmRows);
     renderTiempoMuertoSemana(dailyRows, tmRows);
     renderKgHombre(dailyRows);
@@ -1832,11 +1841,44 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   var RECARGO_KEYS = {rn:1, rfd:1, rfn:1};
   var GROUP_ORDER = ['Producción','Gestores de calidad','Aseo','Descarte de fruta','Supervisor','Días en campo','Vacaciones','Inasistencia'];
   var NOM = null;
+  // Rango propio del panel de nómina (Desde/Hasta). Siempre queda dentro del filtro global:
+  // si cambias un filtro de arriba, se reinicia al rango que ese filtro permite.
+  var NOMLOC = {sig:null, start:null, end:null};
 
   function parseISO(s){ var p = s.split('-'); return new Date(Date.UTC(+p[0], +p[1]-1, +p[2])); }
   function toISO(d){ return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); }
   function mondayOf(iso){ var d = parseISO(iso); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay()+6)%7)); return toISO(d); }
   function isSunday(iso){ return parseISO(iso).getUTCDay() === 0; }
+  // ---- festivos de Colombia (Ley 51 de 1983 / Emiliani), calculados para cualquier año ----
+  var _festCache = {};
+  function easterSunday(y){
+    var a=y%19, b=Math.floor(y/100), c=y%100, d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25),
+        g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30, i=Math.floor(c/4), k=c%4,
+        l=(32+2*e+2*i-h-k)%7, m=Math.floor((a+11*h+22*l)/451),
+        mes=Math.floor((h+l-7*m+114)/31), dia=((h+l-7*m+114)%31)+1;
+    return new Date(Date.UTC(y, mes-1, dia));
+  }
+  function addDays(d, n){ var r = new Date(d.getTime()); r.setUTCDate(r.getUTCDate()+n); return r; }
+  function nextMonday(d){ var dow = d.getUTCDay(); return dow === 1 ? d : addDays(d, dow === 0 ? 1 : 8-dow); }
+  function festivosDe(y){
+    if(_festCache[y]) return _festCache[y];
+    var set = {};
+    var add = function(d, n){ set[toISO(d)] = n; };
+    var fijo = function(m, dd, n){ add(new Date(Date.UTC(y, m-1, dd)), n); };
+    var lunes = function(m, dd, n){ add(nextMonday(new Date(Date.UTC(y, m-1, dd))), n); };
+    fijo(1,1,'Año Nuevo'); fijo(5,1,'Día del Trabajo'); fijo(7,20,'Independencia'); fijo(8,7,'Batalla de Boyacá');
+    fijo(12,8,'Inmaculada Concepción'); fijo(12,25,'Navidad');
+    lunes(1,6,'Reyes Magos'); lunes(3,19,'San José'); lunes(6,29,'San Pedro y San Pablo'); lunes(8,15,'Asunción');
+    lunes(10,12,'Día de la Raza'); lunes(11,1,'Todos los Santos'); lunes(11,11,'Independencia de Cartagena');
+    if(y >= 2026) lunes(7,9,'Virgen de Chiquinquirá (Ley 2578 de 2026)');
+    var e = easterSunday(y);
+    add(addDays(e,-3),'Jueves Santo'); add(addDays(e,-2),'Viernes Santo');
+    add(nextMonday(addDays(e,39)),'Ascensión'); add(nextMonday(addDays(e,60)),'Corpus Christi'); add(nextMonday(addDays(e,68)),'Sagrado Corazón');
+    _festCache[y] = set;
+    return set;
+  }
+  function festivoNombre(iso){ return festivosDe(+iso.slice(0,4))[iso] || null; }
+
   function fmtMoney(v){ return '$' + fmtInt(v); }
   function famOf(grupo){ var g = String(grupo||'').split(' - ')[0].trim(); return g || 'Sin clasificar'; }
   function actOf(grupo){ var p = String(grupo||'').split(' - '); return p.length>1 ? p.slice(1).join(' - ').trim() : p[0].trim(); }
@@ -1872,6 +1914,41 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
            kg:kg, mondayToSem:mondayToSem, rateCache:{}, minF:minF, maxF:maxF};
   }
 
+  function syncNominaRange(){
+    var d = document.getElementById('nomDesde'), h = document.getElementById('nomHasta');
+    if(!d || !h) return;
+    var sig = state.start+'|'+state.end+'|'+Array.from(state.years).sort().join(',');
+    if(!NOM || !NOM.rows.length){ d.value = ''; h.value = ''; NOMLOC.sig = sig; NOMLOC.start = NOMLOC.end = null; return; }
+    d.min = h.min = NOM.minF; d.max = h.max = NOM.maxF;
+    if(sig !== NOMLOC.sig){
+      NOMLOC.sig = sig;
+      var s = state.start > NOM.minF ? state.start : NOM.minF;
+      var e = state.end < NOM.maxF ? state.end : NOM.maxF;
+      if(s > e){ NOMLOC.start = NOMLOC.end = null; d.value = ''; h.value = ''; }
+      else { NOMLOC.start = s; NOMLOC.end = e; d.value = s; h.value = e; }
+    }
+  }
+  function nominaRange(useLocal){
+    var s = state.start, e = state.end;
+    if(useLocal){
+      if(NOMLOC.start && NOMLOC.start > s) s = NOMLOC.start;
+      if(NOMLOC.end && NOMLOC.end < e) e = NOMLOC.end;
+    }
+    return {s:s, e:e};
+  }
+  function onNominaRange(){
+    var d = document.getElementById('nomDesde').value || null, h = document.getElementById('nomHasta').value || null;
+    if(d && h && d > h){ var t = d; d = h; h = t; document.getElementById('nomDesde').value = d; document.getElementById('nomHasta').value = h; }
+    NOMLOC.start = d; NOMLOC.end = h;
+    render();
+  }
+  ['nomDesde','nomHasta'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener('change', onNominaRange);
+  });
+  var nomTodoBtn = document.getElementById('nomRangoTodo');
+  if(nomTodoBtn) nomTodoBtn.addEventListener('click', function(){ NOMLOC.sig = null; render(); });
+
   function infoFor(cod){
     return NOM.costos[cod] || {cod:cod, grupo:'Sin clasificar', costo:0, entra:false};
   }
@@ -1898,11 +1975,11 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   // una "persona-día" = una cédula en una fecha. Si tiene varias filas ese día
   // (p.ej. turno + 2 h de capacitación), el día base se cobra una sola vez, según la
   // labor con más horas ordinarias; las horas extra de todas sus filas sí se suman.
-  function computeNominaDays(){
-    var I = NOM.idx, R = NOM.rows, groups = {}, order = [];
+  function computeNominaDays(useLocal){
+    var I = NOM.idx, R = NOM.rows, groups = {}, order = [], rg = nominaRange(useLocal);
     for(var k=0; k<R.length; k++){
       var r = R[k], fecha = r[I.fecha];
-      if(fecha < state.start || fecha > state.end) continue;
+      if(fecha < rg.s || fecha > rg.e) continue;
       if(!state.years.has(+fecha.slice(0,4))) continue;
       var key = r[I.cedula] + '|' + fecha;
       if(!groups[key]){ groups[key] = {fecha:fecha, cedula:r[I.cedula], rows:[]}; order.push(key); }
@@ -1930,7 +2007,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
         });
       });
       var base = info.costo == null ? 0 : info.costo;
-      if(isSunday(g.fecha) && !NOM.reglas.cobrar_base_domingo) base = 0;
+      if((isSunday(g.fecha) || festivoNombre(g.fecha)) && !NOM.reglas.cobrar_base_domingo) base = 0;
       return {fecha:g.fecha, cedula:g.cedula, cod:primary[I.cod], familia:famOf(info.grupo), entra:!!info.entra,
               costoDefinido: info.costo != null, base:base, extras:extras, extrasHrs:extrasHrs,
               hrsByKey:hrsByKey, valByKey:valByKey, campoActs:campoActs, inasist:inasist, vac:vac};
@@ -1947,10 +2024,10 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     return {key:fecha, label:(+fecha.slice(8,10))+' '+MES_ABR[mi]};
   }
 
-  function computeNomina(gran){
+  function computeNomina(gran, useLocal){
     var res = {hay:false, periods:[], groups:[], personas:[], campo:[], tipos:[], totals:null, diasRango:0};
     if(!NOM || !NOM.rows.length) return res;
-    var days = computeNominaDays();
+    var days = computeNominaDays(useLocal);
     var periods = {}, pOrder = [], dayCost = {}, dayHas = {}, groups = {}, personas = {}, campo = {}, tipos = {};
     days.forEach(function(d){
       dayHas[d.fecha] = true;
@@ -1959,6 +2036,9 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
         per = periods[pk.key] = {key:pk.key, label:pk.label, personas:0, base:0, extras:0, extrasHrs:0,
                                  campo:0, inasist:0, vac:0, fechas:{}, kg:0, costWithKg:0, costNoKg:0, diasSinKg:0};
         pOrder.push(pk.key);
+        if(gran !== 'mes' && gran !== 'semana'){
+          per.dom = isSunday(pk.key); per.fest = festivoNombre(pk.key); per.especial = per.dom || !!per.fest;
+        }
       }
       per.fechas[d.fecha] = true;
       if(d.entra){
@@ -2096,13 +2176,29 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     var totales = P.map(function(p){ return p.total; });
     var maxTot = Math.max.apply(null, totales.concat([1]));
     var maxCk = Math.max.apply(null, P.map(function(p){ return p.costKg || 0; }).concat([1]));
+    var hayEspecial = P.some(function(p){ return p.especial; });
+    var nomOpts = function(scales, legend, horiz, pad, n){
+      var o = chartOpts(scales, legend, horiz, pad, n);
+      o.plugins.tooltip.callbacks = {
+        title: function(items){
+          var p = P[items[0].dataIndex];
+          var extra = p.fest ? ' · festivo: '+p.fest : (p.dom ? ' · domingo' : '');
+          return p.label + extra;
+        },
+        footer: function(items){
+          var p = P[items[0].dataIndex];
+          return 'Total nómina: '+fmtMoney(p.total)+' · '+p.personas+' personas';
+        }
+      };
+      return o;
+    };
     upsertChart('chartNominaDia', {
       data:{ labels:P.map(function(p){return p.label;}), datasets:[
-        {type:'bar', label:'Nómina base (77+251)', data:P.map(function(p){return p.base;}), backgroundColor:'rgba(60,102,144,0.78)', borderRadius:2, stack:'nom', yAxisID:'y', order:2},
-        {type:'bar', label:'Horas extra y recargos', data:P.map(function(p){return p.extras;}), backgroundColor:'rgba(177,94,23,0.85)', borderRadius:2, stack:'nom', yAxisID:'y', order:2},
+        {type:'bar', label:'Nómina base (77+251)', data:P.map(function(p){return p.base;}), backgroundColor:P.map(function(p){ return p.especial ? 'rgba(106,76,147,0.88)' : 'rgba(60,102,144,0.78)'; }), borderRadius:2, stack:'nom', yAxisID:'y', order:2},
+        {type:'bar', label:'Horas extra y recargos', data:P.map(function(p){return p.extras;}), backgroundColor:P.map(function(p){ return p.especial ? 'rgba(176,143,208,0.95)' : 'rgba(177,94,23,0.85)'; }), borderRadius:2, stack:'nom', yAxisID:'y', order:2},
         {type:'line', label:'Costo por kg ($/kg)', data:P.map(function(p){return p.costKg;}), borderColor:COLORS.green, backgroundColor:COLORS.green, pointRadius:3, pointBackgroundColor:COLORS.green, pointBorderColor:'#FFFFFF', pointBorderWidth:1, tension:.25, borderWidth:2.5, yAxisID:'y1', order:1}
-      ]},
-      options: chartOpts({
+      ].concat(hayEspecial ? [{type:'bar', label:'Domingo o festivo (barra morada)', data:[], backgroundColor:'rgba(106,76,147,0.88)', stack:'leyenda', yAxisID:'y'}] : [])},
+      options: nomOpts({
         x:{stacked:true},
         y:{stacked:true, min:0, max:maxTot*2.3, grid:baseGrid(),
            ticks:{callback:function(v){ return v <= maxTot*1.12 ? '$'+fmtCompact(v) : ''; }}},
@@ -2127,6 +2223,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
       var cls = '', badge = '';
       if(maxP && p.key===maxP.key){ cls=' class="dt-max"'; badge=' <span class="dt-badge max">Más caro</span>'; }
       else if(minP && p.key===minP.key){ cls=' class="dt-min"'; badge=' <span class="dt-badge min">Más barato</span>'; }
+      if(p.especial) badge += ' <span class="dt-badge" style="background:#6A4C93;color:#fff;" title="'+(p.fest||'Domingo')+'">'+(p.fest ? 'Festivo' : 'Dom')+'</span>';
       return '<tr'+cls+'><td class="dt-left">'+p.label+badge+'</td><td>'+fmtInt(p.personas)+'</td><td>'+fmtMoney(p.base)+'</td><td>'+fmtMoney(p.extras)+'</td><td>'+fmtMoney(p.total)+'</td>' +
              '<td>'+(p.kg>0?fmtInt(p.kg):'—')+'</td><td>'+(p.costKg!==null?'$'+fmtDec(p.costKg,1):'—')+'</td>' +
              '<td>'+(p.campo||'—')+'</td><td>'+(p.inasist||'—')+'</td><td>'+(p.vac||'—')+'</td></tr>';
