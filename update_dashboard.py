@@ -325,6 +325,63 @@ def extract_params_nomina(wb):
     return params
 
 
+def extract_okr(wb):
+    """Lee la hoja 'OKR' (opcional): objetivo principal, responsable, tolerancia del amarillo y,
+    por cada resultado clave (KR1, KR2, KR3), su texto, meta, tipo (MAX/MIN) y peso.
+    Si la hoja no existe, el tablero usa los valores por defecto que ya trae."""
+    ws = _find_sheet(wb, "okr")
+    if ws is None:
+        log('Hoja "OKR" no encontrada: el tablero usará las metas por defecto.')
+        return {}
+    out = {"objetivo": {}, "krs": []}
+    seccion = None
+    for r in ws.iter_rows(values_only=True):
+        r = list(r)
+        a = r[0] if r else None
+        na = _norm(a)
+        if na.startswith("objetivo principal"):
+            seccion = "obj"; continue
+        if na.startswith("resultados clave"):
+            seccion = "kr"; continue
+        if na.startswith("referencia"):
+            seccion = None; continue
+        if seccion == "obj" and na and len(r) > 1 and r[1] is not None and str(r[1]).strip() != "":
+            v = r[1]
+            if na.startswith("titulo"):
+                out["objetivo"]["titulo"] = str(v).strip()
+            elif na.startswith("descripcion"):
+                out["objetivo"]["descripcion"] = str(v).strip()
+            elif na.startswith("responsable"):
+                out["objetivo"]["responsable"] = str(v).strip()
+            elif na.startswith("inicio"):
+                d = _to_date(v)
+                if d:
+                    out["objetivo"]["inicio"] = d.isoformat()
+            elif "tolerancia" in na:
+                out["objetivo"]["tolerancia"] = _as_pct(v)
+        elif seccion == "kr":
+            m = re.match(r"kr\s*(\d+)$", na)
+            if not m:
+                continue
+            g = lambda i: (r[i] if len(r) > i else None)
+            kr = {"id": "KR" + m.group(1)}
+            for key, i in (("nombre", 1), ("objetivo", 2), ("indicador", 3)):
+                if g(i) is not None and str(g(i)).strip():
+                    kr[key] = str(g(i)).strip()
+            if g(4) is not None and str(g(4)).strip() != "":
+                kr["meta"] = _to_float(g(4))
+            t = _norm(g(5))
+            if t.startswith("max"):
+                kr["tipo"] = "max"
+            elif t.startswith("min"):
+                kr["tipo"] = "min"
+            if g(6) is not None and str(g(6)).strip() != "":
+                kr["peso"] = _as_pct(g(6))
+            out["krs"].append(kr)
+    log(f"OKR: objetivo={'sí' if out['objetivo'] else 'no'}, resultados clave leídos: {[k['id'] for k in out['krs']]}")
+    return out
+
+
 def extract_data(file_bytes):
     wb = openpyxl.load_workbook(file_bytes, data_only=True)
     START_DATE = datetime.datetime(2023, 1, 2)
@@ -450,8 +507,10 @@ def extract_data(file_bytes):
 
     nomina, personas = extract_nomina(wb)
     params_nomina = extract_params_nomina(wb)
+    okr = extract_okr(wb)
 
     return {
+        "okr": okr,
         "nomina": nomina,
         "personas": personas,
         "params_nomina": params_nomina,
