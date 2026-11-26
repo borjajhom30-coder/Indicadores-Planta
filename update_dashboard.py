@@ -357,6 +357,10 @@ def extract_okr(wb):
                 d = _to_date(v)
                 if d:
                     out["objetivo"]["inicio"] = d.isoformat()
+            elif "compromiso" in na:
+                d = _to_date(v)
+                if d:
+                    out["objetivo"]["compromiso"] = d.isoformat()
             elif "tolerancia" in na:
                 out["objetivo"]["tolerancia"] = _as_pct(v)
         elif seccion == "kr":

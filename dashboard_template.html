@@ -378,7 +378,10 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   /* ---------- OKR ---------- */
   .okr-toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;}
   .okr-card{background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;padding:18px 20px;box-shadow:0 1px 3px rgba(35,30,15,0.06);}
-  .okr-objective{display:grid;grid-template-columns:1fr 170px;gap:24px;align-items:center;margin-bottom:14px;}
+  .okr-objective{display:grid;grid-template-columns:1fr 150px 150px;gap:22px;align-items:center;margin-bottom:14px;}
+  .okr-ringbox{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;}
+  .okr-ringcap{font-size:11.5px;color:var(--text-dim);line-height:1.35;max-width:165px;}
+  .okr-ringcap b{color:var(--text-primary);}
   .okr-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600;}
   .okr-title{font-family:'Fraunces',serif;font-weight:700;font-size:25px;line-height:1.12;margin:6px 0 8px;color:var(--text-primary);}
   .okr-desc{margin:0 0 8px;color:var(--text-secondary);font-size:13.5px;line-height:1.5;}
@@ -386,10 +389,10 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   .okr-owner{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:13px;}
   .okr-owner-lbl{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);}
   .okr-owner-name{font-weight:700;font-size:15px;}
-  .okr-ring{position:relative;width:160px;height:160px;justify-self:center;}
+  .okr-ring{position:relative;width:140px;height:140px;}
   .okr-ring svg{width:100%;height:100%;}
   .okr-ring-val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-  .okr-ring-val b{font-family:'Fraunces',serif;font-size:32px;line-height:1;}
+  .okr-ring-val b{font-family:'Fraunces',serif;font-size:29px;line-height:1;}
   .okr-ring-val span{font-size:11px;color:var(--text-dim);margin-top:3px;}
   .okr-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--text-secondary);margin:0 2px 12px;}
   .okr-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
@@ -439,9 +442,11 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   .okr-pillcell{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;padding:3px 9px;border-radius:7px;display:inline-block;}
   .okr-pillcell.ok{background:var(--green-soft);color:var(--green);} .okr-pillcell.warn{background:rgba(199,154,30,0.18);color:#8A6A0B;}
   .okr-pillcell.bad{background:var(--coral-soft);color:var(--coral);} .okr-pillcell.na{background:rgba(35,30,15,0.07);color:var(--text-dim);}
+  .okr-krs.cols2,.okr-grid3.cols2{grid-template-columns:repeat(2,1fr);}
   @media (max-width:1100px){
-    .okr-krs,.okr-grid3{grid-template-columns:1fr;}
-    .okr-objective{grid-template-columns:1fr;}
+    .okr-krs,.okr-grid3,.okr-krs.cols2,.okr-grid3.cols2{grid-template-columns:1fr;}
+    .okr-objective{grid-template-columns:1fr 1fr;}
+    .okr-objective > div:first-child{grid-column:1/-1;}
   }
 </style>
 </head>
@@ -780,28 +785,47 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
         <p class="okr-takeaway" id="okrTakeaway">Cargando…</p>
         <div class="okr-owner"><span class="okr-owner-lbl">Responsable</span><span class="okr-owner-name" id="okrOwner">—</span></div>
       </div>
-      <div class="okr-ring" aria-label="Cumplimiento del objetivo">
-        <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" fill="none" stroke="rgba(35,30,15,0.10)" stroke-width="12"/><circle id="okrRingArc" cx="60" cy="60" r="50" fill="none" stroke="#B15E17" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 400" transform="rotate(-90 60 60)"/></svg>
-        <div class="okr-ring-val"><b id="okrRingVal">—</b><span>cumplimiento</span></div>
+      <div class="okr-ringbox">
+        <div class="okr-ring" aria-label="Cumplimiento del objetivo en el período">
+          <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" fill="none" stroke="rgba(35,30,15,0.10)" stroke-width="12"/><circle id="okrRingArc" cx="60" cy="60" r="50" fill="none" stroke="#B15E17" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 400" transform="rotate(-90 60 60)"/></svg>
+          <div class="okr-ring-val"><b id="okrRingVal">—</b><span>del período</span></div>
+        </div>
+        <div class="okr-ringcap" id="okrRingCap">Cumplimiento del período</div>
+      </div>
+      <div class="okr-ringbox">
+        <div class="okr-ring" aria-label="Avance del compromiso">
+          <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" fill="none" stroke="rgba(35,30,15,0.10)" stroke-width="12"/><circle id="okrRing2Arc" cx="60" cy="60" r="50" fill="none" stroke="#B15E17" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 400" transform="rotate(-90 60 60)"/></svg>
+          <div class="okr-ring-val"><b id="okrRing2Val">—</b><span>del compromiso</span></div>
+        </div>
+        <div class="okr-ringcap" id="okrRing2Cap">Compromiso</div>
       </div>
     </div>
 
     <div class="okr-legend" id="okrLegend"></div>
     <div class="okr-krs" id="okrKrs"></div>
 
-    <div class="okr-sechead"><h3>Tendencia</h3><span id="okrTendSub">—</span></div>
-    <div class="okr-grid3">
-      <div class="okr-card"><div class="okr-ch-title" id="okrChT1">KR1</div><div class="okr-chartbox"><canvas id="chOkrKR1"></canvas></div></div>
-      <div class="okr-card"><div class="okr-ch-title" id="okrChT2">KR2</div><div class="okr-chartbox"><canvas id="chOkrKR2"></canvas></div></div>
-      <div class="okr-card"><div class="okr-ch-title" id="okrChT3">KR3</div><div class="okr-chartbox"><canvas id="chOkrKR3"></canvas></div></div>
+    <div class="okr-sechead"><h3>Ruta hacia el compromiso</h3><span id="okrRutaSub">—</span></div>
+    <div class="okr-card" style="margin-bottom:22px;">
+      <p class="okr-takeaway" id="okrRutaTop" style="font-weight:500;line-height:1.5;margin-bottom:10px;"></p>
+      <div class="okr-chartbox" style="height:360px;"><canvas id="chOkrRuta"></canvas></div>
+      <div class="descarte-table-wrap" style="margin-top:14px;">
+        <table class="descarte-table">
+          <thead><tr><th class="dt-left">Resultado clave</th><th>Hoy (28 días)</th><th>Meta</th><th>Falta</th><th>Tendencia</th><th>Necesario</th><th>Proyección al cierre</th><th>Estado proyectado</th></tr></thead>
+          <tbody id="okrRutaBody"></tbody>
+        </table>
+      </div>
+      <div class="closing-note" id="okrRutaNota"></div>
     </div>
+
+    <div class="okr-sechead"><h3>Tendencia</h3><span id="okrTendSub">—</span></div>
+    <div class="okr-grid3" id="okrTrend"></div>
 
     <div class="okr-card" style="margin-top:16px;">
       <div class="okr-ch-title">Detalle del período, día por día</div>
       <div class="closing-note" id="okrDetSub" style="margin:4px 0 10px;">—</div>
       <div class="descarte-table-wrap scroll-table">
         <table class="descarte-table">
-          <thead><tr><th class="dt-left">Día</th><th id="okrTh1">KR1</th><th id="okrTh2">KR2</th><th id="okrTh3">KR3</th><th class="dt-left">Nota</th></tr></thead>
+          <thead><tr id="okrThRow"></tr></thead>
           <tbody id="okrDetBody"></tbody>
         </table>
       </div>
@@ -2457,8 +2481,8 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   var DEFAULT_OKR = {
     objetivo:{
       titulo:'MAXIMIZAR LA EFICIENCIA Y PRODUCTIVIDAD OPERACIONAL',
-      descripcion:'Impulsar el desempeño de la operación mediante la optimización de la mano de obra, la reducción de pérdidas poscosecha y el aprovechamiento eficiente de los recursos, asegurando resultados competitivos en costo, productividad y calidad.',
-      responsable:'Jhon Fredy Borja', inicio:'2026-01-01', tolerancia:0.10
+      descripcion:'Aumentar la productividad en un 20% y aprovechar los recursos para mejorar los rendimientos en planta de proceso con un bajo costo y con una pérdida postcosecha inferior a un 4% al cierre del primer trimestre del 2027.',
+      responsable:'Jhon Fredy Borja', inicio:'2026-01-01', compromiso:'2027-03-31', tolerancia:0.10
     },
     krs:[
       {id:'KR1', nombre:'Control de pérdidas poscosecha',
@@ -2469,17 +2493,22 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
        indicador:'Costo de mano de obra por kilogramo', meta:50, tipo:'max', peso:1},
       {id:'KR3', nombre:'Productividad por hombre',
        objetivo:'Incrementar la productividad individual del personal, maximizando los kilogramos procesados por trabajador y fortaleciendo el rendimiento operativo de la línea de empaque.',
-       indicador:'Kilogramos por hombre', meta:4800, tipo:'min', peso:1}
+       indicador:'Kilogramos por hombre', meta:4800, tipo:'min', peso:1},
+      {id:'KR4', nombre:'Productividad horaria de la operación',
+       objetivo:'Aumentar la capacidad de procesamiento por hora, asegurando la continuidad, eficiencia y rendimiento de la operación de empaque.',
+       indicador:'Volumen de kilogramos procesados por hora', meta:14400, tipo:'min', peso:1}
     ]
   };
   function trimZero(s){ return String(s).replace(/,0$/, ''); }
   var OKR_FMT = {
     KR1:{v:function(x){return fmtDec(x,1)+' %';}, m:function(x){return trimZero(fmtDec(x,1))+' %';}, d:function(x){return fmtDec(x,1)+' pts';},
-         t:function(x){return fmtDec(x,1);}, u:'de pérdida poscosecha', eps:0.1},
+         t:function(x){return fmtDec(x,1);}, u:'de pérdida poscosecha', eps:0.1, short:'% pérdida'},
     KR2:{v:function(x){return '$'+fmtDec(x,1);}, m:function(x){return '$'+trimZero(fmtDec(x,1))+'/kg';}, d:function(x){return '$'+fmtDec(x,1)+'/kg';},
-         t:function(x){return '$'+fmtDec(x,0);}, u:'por kg empacado', eps:0.3},
+         t:function(x){return '$'+fmtDec(x,0);}, u:'por kg empacado', eps:0.3, short:'$/kg'},
     KR3:{v:function(x){return fmtInt(x);}, m:function(x){return fmtInt(x)+' kg/hombre';}, d:function(x){return fmtInt(x)+' kg';},
-         t:function(x){return fmtInt(x);}, u:'kg por hombre (por día)', eps:30}
+         t:function(x){return fmtInt(x);}, u:'kg por hombre (por día)', eps:30, short:'kg/hombre'},
+    KR4:{v:function(x){return fmtInt(x);}, m:function(x){return fmtInt(x)+' kg/h';}, d:function(x){return fmtInt(x)+' kg/h';},
+         t:function(x){return fmtInt(x);}, u:'kg por hora', eps:50, short:'kg/hora'}
   };
   var OKRC = null, OKR_IDX = {};
   var DIAS_ES3 = ['dom','lun','mar','mié','jue','vie','sáb'];
@@ -2509,13 +2538,18 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
       cfg.krs.push(kr);
     });
     cfg.objetivo.tolerancia = +cfg.objetivo.tolerancia >= 0 ? +cfg.objetivo.tolerancia : 0.10;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(cfg.objetivo.compromiso || ''))) cfg.objetivo.compromiso = DEFAULT_OKR.objetivo.compromiso;
     return cfg;
   }
 
   function buildOkrContext(){
     var cfg = mergeOkr(), days = {};
     var D = function(f){ return days[f] || (days[f] = {f:f, kg:0, op:0, merma:0, cosecha:0, cost:0, hasNom:false}); };
-    DATA.daily.rows.forEach(function(r){ var d = D(r[i1.fecha]); d.kg += r[i1.kg_dia] || 0; d.op += r[i1.operarios] || 0; });
+    DATA.daily.rows.forEach(function(r){
+      var d = D(r[i1.fecha]);
+      d.kg += r[i1.kg_dia] || 0; d.op += r[i1.operarios] || 0;
+      d.kgho = r[i1.kg_hombre] || 0; d.kgh = r[i1.kg_hora] || 0;
+    });
     DATA.post_cosecha.rows.forEach(function(r){ var d = D(r[i4.fecha]); d.merma += r[i4.total_merma] || 0; d.cosecha += r[i4.total_cosecha] || 0; });
     if(NOM && NOM.rows.length){
       computeNominaDays('all').forEach(function(x){ if(x.entra){ var d = D(x.fecha); d.cost += x.base + x.extras; d.hasNom = true; } });
@@ -2525,7 +2559,8 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
       d.v = {
         KR1: d.cosecha > 0 ? d.merma / d.cosecha * 100 : null,
         KR2: (d.hasNom && d.kg > 0 && d.cost > 0) ? d.cost / d.kg : null,
-        KR3: (d.kg > 0 && d.op > 0) ? d.kg / d.op : null
+        KR3: (d.kgho > 0) ? d.kgho : null,
+        KR4: (d.kgh > 0) ? d.kgh : null
       };
       return d;
     });
@@ -2558,17 +2593,19 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   }
 
   function okrAgg(fechas){
-    var s = {merma:0, cosecha:0, cost:0, kgC:0, kg:0, op:0, n1:0, n2:0, n3:0};
+    var s = {merma:0, cosecha:0, cost:0, kgC:0, c3:0, n3:0, c4:0, n4:0, n1:0, n2:0};
     fechas.forEach(function(f){
       var d = OKRC.days[f]; if(!d) return;
       if(d.cosecha > 0){ s.merma += d.merma; s.cosecha += d.cosecha; s.n1++; }
       if(d.v.KR2 !== null){ s.cost += d.cost; s.kgC += d.kg; s.n2++; }
-      if(d.v.KR3 !== null){ s.kg += d.kg; s.op += d.op; s.n3++; }
+      if(d.v.KR3 !== null){ s.c3 += d.v.KR3; s.n3++; }
+      if(d.v.KR4 !== null){ s.c4 += d.v.KR4; s.n4++; }
     });
     return {KR1: s.cosecha > 0 ? s.merma / s.cosecha * 100 : null,
             KR2: s.kgC > 0 ? s.cost / s.kgC : null,
-            KR3: s.op > 0 ? s.kg / s.op : null,
-            n:{KR1:s.n1, KR2:s.n2, KR3:s.n3}};
+            KR3: s.n3 ? s.c3 / s.n3 : null,
+            KR4: s.n4 ? s.c4 / s.n4 : null,
+            n:{KR1:s.n1, KR2:s.n2, KR3:s.n3, KR4:s.n4}};
   }
   function okrEstado(v, kr){
     if(v === null || v === undefined || isNaN(v)) return 'na';
@@ -2650,7 +2687,8 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     var how = {
       KR1:'Kilos descartados ÷ kilos cosechados (hoja Consolidado Post-cosecha). En un período se dividen los kilos totales; no se promedian los días.',
       KR2:'(Nómina base + horas extra y recargos de los códigos 77 y 251) ÷ kilos procesados, solo en los días que tienen kilos en Indicadores de planta (hojas Nomina diaria y Parametros nomina).',
-      KR3:'Kilos procesados ÷ operarios del día (hoja Indicadores de planta). En un período: kilos totales ÷ operarios-día totales.'
+      KR3:'Columna KG/HOMBRE de Indicadores de planta. En un período, el promedio de los días (igual que Cierre de mes).',
+      KR4:'Columna KG/HORA de Indicadores de planta. En un período, el promedio de los días (igual que Cierre de mes y las tarjetas).'
     };
     var sumP = cfg.krs.reduce(function(a, k){ return a + k.peso; }, 0);
     return '<dl>'
@@ -2663,6 +2701,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
       + '<li>Cumplimiento de cada resultado clave: con meta máxima, 100 % si está dentro y meta ÷ valor si se pasa; con meta mínima, valor ÷ meta (tope 100 %).</li>'
       + '<li>Cumplimiento del objetivo (el anillo): promedio ponderado por los pesos, de los resultados clave que tienen datos.</li>'
       + '<li>Días en meta y racha se calculan con el valor de cada día. El ritmo mira los últimos 7 días con dato. El acumulado va desde el inicio del seguimiento hasta el final del período evaluado.</li>'
+      + '<li>Compromiso: el segundo anillo muestra dónde está la operación hoy (últimos 28 días con datos) frente a las metas comprometidas al ' + okrIsoToDmy(o.compromiso) + '. La proyección usa la tendencia lineal de los últimos hasta 6 meses y es solo una referencia.</li>'
       + '<li>Seguimiento semanal (lunes a domingo) y mensual. El comparativo con el año anterior usa la misma semana (52 semanas atrás) o el mismo mes.</li>'
       + '</ul></dd></div>'
       + '<div><dt>Fuentes</dt><dd><ul>'
@@ -2672,11 +2711,152 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
       + '<div><dt>Responsable</dt><dd><b>' + okrEsc(o.responsable) + '</b></dd></div></dl>';
   }
 
+  var OKR_MESES3 = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  function okrMonthIdx(k){ return (+k.slice(0,4)) * 12 + (+k.slice(5,7) - 1); }
+  function okrMonthLbl(idx){ return OKR_MESES3[idx % 12] + ' ' + String(Math.floor(idx / 12)).slice(2); }
+  function okrFit(pts){            // regresión lineal simple: [[x,y],...] -> {a,b}; exige al menos 3 puntos
+    var n = pts.length; if(n < 3) return null;
+    var sx = 0, sy = 0, sxx = 0, sxy = 0;
+    pts.forEach(function(p){ sx += p[0]; sy += p[1]; sxx += p[0]*p[0]; sxy += p[0]*p[1]; });
+    var den = n * sxx - sx * sx; if(!den) return null;
+    var b = (n * sxy - sx * sy) / den;
+    return {a:(sy - b * sx) / n, b:b};
+  }
+  function okrComposite(vals, cfg){  // cumplimiento ponderado (0..1) de un conjunto de valores {KR1:..}
+    var num = 0, den = 0;
+    cfg.krs.forEach(function(kr){ var c = okrCumpl(vals[kr.id], kr); if(c !== null){ num += c * kr.peso; den += kr.peso; } });
+    return den ? num / den : null;
+  }
+  function okrPctState(p){ return p === null ? 'na' : (p >= 0.95 ? 'ok' : (p >= 0.80 ? 'warn' : 'bad')); }
+  function okrIsoToDmy(f){ return f.slice(8,10) + '/' + f.slice(5,7) + '/' + f.slice(0,4); }
+  function okrSigned(F, d){ return (d > 0 ? '+' : (d < 0 ? '−' : '')) + F.d(Math.abs(d)); }
+
+  // Cálculo del compromiso: dónde está la operación hoy (últimos 28 días), hacia dónde va (tendencia mensual) y qué falta
+  function okrCommitData(){
+    var cfg = OKRC.cfg, ini = cfg.objetivo.inicio, fin = cfg.objetivo.compromiso;
+    var Pm = okrPeriods('m');
+    if(!Pm.length || !OKRC.list.length) return null;
+    var monthly = Pm.map(function(p){ return {k:p.k, idx:okrMonthIdx(p.k), v:okrAgg(p.fechas)}; });
+    var lastIdx = monthly[monthly.length-1].idx, firstIdx = monthly[0].idx, tIdx = okrMonthIdx(fin.slice(0,7));
+    var endIdx = Math.max(tIdx, lastIdx);
+    var lastF = OKRC.list[OKRC.list.length-1].f;
+    var desde = toISO(addDays(parseISO(lastF), -27));
+    var hoy = okrAgg(OKRC.list.filter(function(d){ return d.f >= desde && d.f >= ini; }).map(function(d){ return d.f; }));
+    var hoyD = new Date(), hoyIso = toISO(new Date(Date.UTC(hoyD.getFullYear(), hoyD.getMonth(), hoyD.getDate())));
+    var dias = Math.round((parseISO(fin) - parseISO(hoyIso)) / 86400000), mesesRest = Math.max(0, dias / 30.44);
+    var fits = {};
+    cfg.krs.forEach(function(kr){
+      var pts = monthly.filter(function(m){ return m.v[kr.id] !== null; }).slice(-6).map(function(m){ return [m.idx, m.v[kr.id]]; });
+      fits[kr.id] = okrFit(pts);
+    });
+    // proyección anclada en el nivel de hoy: parte de lo que hace la operación ahora y sigue la pendiente mensual de los últimos meses
+    var projAt = function(kr, x){ var f = fits[kr.id], h0 = hoy[kr.id]; if(h0 === null) return null; if(!f) return h0; var y = h0 + f.b * (x - lastIdx); return y < 0 ? 0 : y; };
+    var rows = cfg.krs.map(function(kr){
+      var F = OKR_FMT[kr.id], h = hoy[kr.id], f = fits[kr.id];
+      var falta = h === null ? null : (kr.tipo === 'min' ? Math.max(0, kr.meta - h) : Math.max(0, h - kr.meta));
+      var nec = null;
+      if(h !== null && falta !== null){ nec = falta === 0 ? 0 : (mesesRest > 0 ? (kr.tipo === 'min' ? falta / mesesRest : -falta / mesesRest) : null); }
+      var proy = (h === null) ? null : (dias <= 0 ? h : projAt(kr, tIdx));
+      return {kr:kr, hoy:h, falta:falta, tend:f ? f.b : null, nec:nec, proy:proy, estProy:okrEstado(proy, kr), estHoy:okrEstado(h, kr)};
+    });
+    var hoyVals = {}, proyVals = {};
+    rows.forEach(function(r){ hoyVals[r.kr.id] = r.hoy; proyVals[r.kr.id] = r.proy; });
+    // serie mensual del cumplimiento (real y proyectado) para la gráfica
+    var labels = [], real = [], proy = [], metaL = [], krLines = {};
+    cfg.krs.forEach(function(kr){ krLines[kr.id] = []; });
+    for(var x = firstIdx; x <= endIdx; x++){
+      labels.push(okrMonthLbl(x));
+      var m = monthly.filter(function(q){ return q.idx === x; })[0];
+      var comp = m ? okrComposite(m.v, cfg) : null;
+      real.push(comp === null ? null : comp * 100);
+      if(x === lastIdx) proy.push(comp === null ? null : comp * 100);
+      else if(x > lastIdx){
+        var vs = {}; cfg.krs.forEach(function(kr){ vs[kr.id] = (dias <= 0 ? hoyVals[kr.id] : projAt(kr, x)); });
+        var pc = okrComposite(vs, cfg); proy.push(pc === null ? null : pc * 100);
+      } else proy.push(null);
+      metaL.push(100);
+      cfg.krs.forEach(function(kr){ var c = m ? okrCumpl(m.v[kr.id], kr) : null; krLines[kr.id].push(c === null ? null : c * 100); });
+    }
+    return {rows:rows, hoy:hoy, dias:dias, mesesRest:mesesRest, labels:labels, real:real, proy:proy, metaL:metaL, krLines:krLines,
+            compHoy:okrComposite(hoyVals, cfg), compProy:(dias <= 0 ? okrComposite(hoyVals, cfg) : okrComposite(proyVals, cfg)), fin:fin, lastIdx:lastIdx, firstIdx:firstIdx};
+  }
+
+  function renderOkrCommit(){
+    var cfg = OKRC.cfg, C = okrCommitData(), fin = cfg.objetivo.compromiso;
+    var arc2 = document.getElementById('okrRing2Arc'), val2 = document.getElementById('okrRing2Val'), cap2 = document.getElementById('okrRing2Cap');
+    var sub = document.getElementById('okrRutaSub'), top = document.getElementById('okrRutaTop'), body = document.getElementById('okrRutaBody'), nota = document.getElementById('okrRutaNota');
+    if(!C){ val2.textContent = '—'; cap2.textContent = 'Sin datos todavía'; top.textContent = ''; body.innerHTML = ''; return; }
+    var pct = C.compHoy === null ? null : Math.round(C.compHoy * 100);
+    var proyPct = C.compProy === null ? null : Math.round(C.compProy * 100);
+    val2.textContent = pct === null ? '—' : pct + '%';
+    arc2.setAttribute('stroke-dasharray', (pct === null ? 0 : Math.min(100, pct) / 100 * 314.16) + ' 400');
+    arc2.setAttribute('stroke', OKR_COL[okrPctState(C.compHoy)]);
+    var plazo = C.dias > 0 ? 'faltan ' + C.dias + ' días' : (C.dias === 0 ? 'vence hoy' : 'venció hace ' + Math.abs(C.dias) + ' días');
+    cap2.innerHTML = '<b>Compromiso al ' + okrIsoToDmy(fin) + '</b><br>' + plazo + (proyPct !== null && C.dias > 0 ? '<br>proyección al cierre: <b style="color:' + OKR_COL[okrPctState(C.compProy)] + '">' + proyPct + '%</b>' : '');
+    sub.textContent = 'Cierre ' + okrIsoToDmy(fin) + ' · ' + plazo + ' · 100% = todas las metas cumplidas';
+
+    var peor = C.rows.filter(function(r){ return r.hoy !== null && r.estHoy !== 'ok'; })
+      .sort(function(a, b){ return okrCumpl(a.hoy, a.kr) - okrCumpl(b.hoy, b.kr); });
+    top.innerHTML = '<b>Hoy</b> (últimos 28 días) la operación va en <b style="color:' + OKR_COL[okrPctState(C.compHoy)] + '">' + (pct === null ? '—' : pct + '%') + '</b> de lo comprometido.' +
+      (proyPct !== null && C.dias > 0 ? ' Si sigue la tendencia de los últimos meses, al cierre llegaría a <b style="color:' + OKR_COL[okrPctState(C.compProy)] + '">' + proyPct + '%</b>.' : '') +
+      (peor.length ? ' Lo más lejos de su meta: <b>' + okrEsc(peor[0].kr.id) + '</b> (' + Math.round(okrCumpl(peor[0].hoy, peor[0].kr) * 100) + '% de su meta).' : ' Todos los resultados clave están en meta.');
+
+    // gráfica: cumplimiento mensual real, proyección y meta (100%)
+    var KRCOL = {KR1:'#3C6690', KR2:'#127B76', KR3:'#6A4C93', KR4:'#A9740F'};
+    var compCols = C.real.map(function(v){ return v === null ? 'rgba(0,0,0,0)' : OKR_COL[okrPctState(v / 100)]; });
+    var all = C.real.concat(C.proy).filter(function(v){ return v !== null; });
+    Object.keys(C.krLines).forEach(function(k){ C.krLines[k].forEach(function(v){ if(v !== null) all.push(v); }); });
+    var mn = Math.max(0, Math.floor((Math.min.apply(null, all.concat([100])) - 8) / 10) * 10);
+    var lastPos = C.proy.length - 1;
+    var ds = [
+      {label:'Cumplimiento del objetivo', data:C.real, borderColor:COLORS.orange, backgroundColor:COLORS.orange, pointBackgroundColor:compCols, pointBorderColor:'#FFFFFF', pointBorderWidth:1.5, pointRadius:6, borderWidth:3.5, tension:.25, spanGaps:false},
+      {label:'Proyección con la tendencia', data:C.proy, borderColor:COLORS.orange, borderDash:[7,6], pointRadius:function(c){ return c.dataIndex === lastPos ? 6 : 3; }, pointBackgroundColor:'#FFFFFF', pointBorderColor:COLORS.orange, pointBorderWidth:2, borderWidth:2.5, tension:.25, spanGaps:false}
+    ];
+    cfg.krs.forEach(function(kr){
+      ds.push({label:kr.id, data:C.krLines[kr.id], borderColor:KRCOL[kr.id] || '#888', backgroundColor:KRCOL[kr.id] || '#888', pointRadius:2.5, borderWidth:1.5, tension:.25, spanGaps:true, hidden:false});
+    });
+    ds.push({label:'Meta comprometida (100%)', data:C.metaL, borderColor:'#83886F', borderDash:[3,5], pointRadius:0, borderWidth:1.5});
+    var oRuta = chartOpts({y:{min:mn, max:108, grid:baseGrid(), ticks:{callback:function(v){ return v <= 100 ? v + '%' : ''; }}}}, true, false, 18, C.labels.length);
+    oRuta.layout.padding.left = 8; oRuta.layout.padding.right = 36;
+    upsertChart('chOkrRuta', {type:'line', data:{labels:C.labels, datasets:ds}, options:oRuta}, {
+      enabled:true, minSpacing:34,
+      series:[
+        {index:0, formatter:function(v){ return Math.round(v) + '%'; }, color:'#F3EFE3', yOffset:-11, minSpacing:34},
+        {index:1, formatter:function(v, i){ return i === lastPos ? Math.round(v) + '%' : ''; }, color:'#F3EFE3', yOffset:-11, minSpacing:34}
+      ]
+    });
+
+    body.innerHTML = C.rows.map(function(r){
+      var kr = r.kr, F = OKR_FMT[kr.id], rowSt = r.estProy;
+      var nec = r.nec === null ? '—' : (r.nec === 0 ? 'Mantener' : okrSigned(F, r.nec) + ' /mes');
+      var tend = r.tend === null ? 'pocos meses de datos' : okrSigned(F, r.tend) + ' /mes';
+      var good = r.tend !== null && (kr.tipo === 'max' ? r.tend < 0 : r.tend > 0);
+      return '<tr><td class="dt-left"><b>' + kr.id + '</b> · ' + okrEsc(kr.nombre) + '</td>' +
+        '<td><span class="okr-pillcell ' + r.estHoy + '">' + (r.hoy === null ? '—' : F.v(r.hoy)) + '</span></td>' +
+        '<td>' + (kr.tipo === 'max' ? '≤ ' : '≥ ') + F.m(kr.meta) + '</td>' +
+        '<td>' + (r.falta === null ? '—' : (r.falta === 0 ? 'Cumplida' : F.d(r.falta))) + '</td>' +
+        '<td style="color:' + (r.tend === null ? 'var(--text-dim)' : (good ? 'var(--green)' : 'var(--coral)')) + '">' + tend + '</td>' +
+        '<td>' + nec + '</td>' +
+        '<td><span class="okr-pillcell ' + rowSt + '">' + (r.proy === null ? '—' : F.v(r.proy)) + '</span></td>' +
+        '<td><span class="okr-pill ' + rowSt + '">' + OKR_ST[rowSt] + '</span></td></tr>';
+    }).join('');
+    nota.textContent = 'Hoy = últimos 28 días con datos. Tendencia = cambio mensual promedio de los últimos hasta 6 meses (mínimo 3). Necesario = lo que habría que mejorar cada mes, desde hoy, para llegar a la meta en la fecha del compromiso. La proyección es una referencia lineal, no una garantía: ignora cambios de operación, temporada o decisiones nuevas.';
+  }
+
   function renderOkr(){
     if(!OKRC) return;
-    var cfg = OKRC.cfg, modo = OKRC.modo, ini = cfg.objetivo.inicio;
-    var P = okrPeriods(modo), box = document.getElementById('okrKrs');
-    document.getElementById('okrObjEyebrow').textContent = 'Objetivo principal · ' + ini.slice(0,4);
+    var cfg = OKRC.cfg, modo = OKRC.modo, ini = cfg.objetivo.inicio, ids = cfg.krs.map(function(k){ return k.id; }).join(',');
+    var P = okrPeriods(modo), box = document.getElementById('okrKrs'), cols2 = cfg.krs.length >= 4;
+    box.classList.toggle('cols2', cols2);
+    var trend = document.getElementById('okrTrend');
+    trend.classList.toggle('cols2', cols2);
+    if(trend.dataset.built !== ids){            // la estructura depende de cuántos resultados clave haya
+      cfg.krs.forEach(function(kr){ var ch = window.Chart && Chart.getChart('chOkr' + kr.id); if(ch) ch.destroy(); });
+      trend.innerHTML = cfg.krs.map(function(kr){ return '<div class="okr-card"><div class="okr-ch-title" id="okrChT' + kr.id + '">' + kr.id + '</div><div class="okr-chartbox"><canvas id="chOkr' + kr.id + '"></canvas></div></div>'; }).join('');
+      document.getElementById('okrThRow').innerHTML = '<th class="dt-left">Día</th>' + cfg.krs.map(function(kr){ return '<th id="okrTh' + kr.id + '">' + kr.id + '</th>'; }).join('') + '<th class="dt-left">Nota</th>';
+      trend.dataset.built = ids;
+    }
+    document.getElementById('okrObjEyebrow').textContent = 'Objetivo principal · compromiso al ' + okrIsoToDmy(cfg.objetivo.compromiso);
     document.getElementById('okrObjTitulo').textContent = cfg.objetivo.titulo;
     document.getElementById('okrObjDesc').textContent = cfg.objetivo.descripcion;
     document.getElementById('okrOwner').textContent = cfg.objetivo.responsable;
@@ -2714,21 +2894,19 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
       box.appendChild(el);
     });
 
-    // objetivo: anillo = promedio ponderado del cumplimiento de los KR con datos
-    var num = 0, den = 0;
-    cfg.krs.forEach(function(kr){ var c = okrCumpl(cur[kr.id], kr); if(c !== null){ num += c * kr.peso; den += kr.peso; } });
-    var pct = den ? Math.round(num / den * 100) : null;
+    // objetivo del período: anillo = promedio ponderado del cumplimiento de los KR con datos
+    var comp = okrComposite(cur, cfg), pct = comp === null ? null : Math.round(comp * 100);
     var arc = document.getElementById('okrRingArc');
     document.getElementById('okrRingVal').textContent = pct === null ? '—' : pct + '%';
     arc.setAttribute('stroke-dasharray', (pct === null ? 0 : Math.min(100, pct) / 100 * 314.16) + ' 400');
-    arc.setAttribute('stroke', pct === null ? OKR_COL.na : (pct >= 95 ? OKR_COL.ok : (pct >= 80 ? OKR_COL.warn : OKR_COL.bad)));
+    arc.setAttribute('stroke', OKR_COL[okrPctState(comp)]);
+    document.getElementById('okrRingCap').innerHTML = '<b>Cumplimiento del período</b><br>' + okrEsc(curLbl);
     var ev = cfg.krs.filter(function(k){ return cur[k.id] !== null; });
     var noOk = ev.filter(function(k){ return okrEstado(cur[k.id], k) !== 'ok'; });
     var t = curLbl + ': ' + (ev.length ? (ev.length - noOk.length) + ' de ' + ev.length + ' resultados clave en meta.' +
       (noOk.length ? ' Por mejorar: ' + noOk.map(function(k){ return k.id + ' (' + OKR_FMT[k.id].v(cur[k.id]) + ' vs ' + (k.tipo === 'max' ? 'máx. ' : 'mín. ') + OKR_FMT[k.id].m(k.meta) + ')'; }).join('; ') + '.' : ' ¡Todos en meta!') : 'sin datos suficientes todavía.');
     document.getElementById('okrTakeaway').textContent = t;
 
-    // avisos
     var av = '';
     if(cur.KR2 === null){
       av += '<div class="closing-note" style="background:rgba(199,154,30,0.14);border:1px solid rgba(199,154,30,0.35);border-radius:10px;padding:9px 12px;margin:0 0 12px;">KR2 sin datos en este período: ' +
@@ -2736,16 +2914,18 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     }
     document.getElementById('okrAvisos').innerHTML = av;
 
+    renderOkrCommit();
+
     // tendencia: últimos 8 períodos
     var sub = P.slice(Math.max(0, i - 7), i + 1);
     document.getElementById('okrTendSub').textContent = 'Últimos ' + sub.length + ' ' + (modo === 'm' ? 'meses' : 'semanas') + ' hasta ' + okrLabel(per.k, modo).replace(/ \(.*\)/, '') + ' · línea punteada = meta';
     var labels = sub.map(function(p){ return okrShort(p.k, modo); });
     var data = sub.map(function(p){ return okrAgg(p.fechas); });
-    cfg.krs.forEach(function(kr, idx){
+    cfg.krs.forEach(function(kr){
       var F = OKR_FMT[kr.id], cid = 'chOkr' + kr.id;
-      document.getElementById('okrChT' + (idx + 1)).textContent = kr.id + ' · ' + kr.nombre;
-      document.getElementById('okrTh' + (idx + 1)).textContent = kr.id + ' · ' + (kr.id === 'KR1' ? '% pérdida' : (kr.id === 'KR2' ? '$/kg' : 'kg/hombre'));
-      var vals = data.map(function(x){ var y = x[kr.id]; return y === null ? null : (kr.id === 'KR3' ? Math.round(y) : Math.round(y * 10) / 10); });
+      document.getElementById('okrChT' + kr.id).textContent = kr.id + ' · ' + kr.nombre;
+      document.getElementById('okrTh' + kr.id).textContent = kr.id + ' · ' + F.short;
+      var vals = data.map(function(x){ var y = x[kr.id]; return y === null ? null : (kr.id === 'KR1' || kr.id === 'KR2' ? Math.round(y * 10) / 10 : Math.round(y)); });
       var all = vals.filter(function(y){ return y !== null; }).concat([kr.meta]), mn = Math.min.apply(null, all), mx = Math.max.apply(null, all), pd = (mx - mn) * 0.3 || 1;
       var cols = vals.map(function(y){ return OKR_COL[okrEstado(y, kr)]; });
       upsertChart(cid, {
@@ -2756,7 +2936,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
         ]},
         options: (function(){
           var o = chartOpts({x:{offset:true}, y:{min:Math.floor(Math.max(0, mn - pd)), max:Math.ceil(mx + pd), grid:baseGrid(), ticks:{callback:function(v){ return F.t(v); }}}}, false, false, 28, labels.length);
-          o.layout.padding.left = 16; o.layout.padding.right = 34;     // que no se corten las etiquetas de los extremos
+          o.layout.padding.left = 16; o.layout.padding.right = 34;
           return o;
         })()
       }, {enabled:true, minSpacing:34, series:[{index:0, formatter:function(v){ return F.v(v); }, color:'#F3EFE3', yOffset:-10, minSpacing:34}]});
@@ -2765,13 +2945,13 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     // detalle día por día
     document.getElementById('okrDetSub').textContent = okrLabel(per.k, modo) + ' · cada día con su valor de cada resultado clave y su semáforo.';
     var K = cfg.krs;
-    document.getElementById('okrDetBody').innerHTML = per.fechas.filter(function(f){ var d = OKRC.days[f]; return d.v.KR1 !== null || d.v.KR2 !== null || d.v.KR3 !== null; }).map(function(f){
+    document.getElementById('okrDetBody').innerHTML = per.fechas.filter(function(f){ var d = OKRC.days[f]; return K.some(function(kr){ return d.v[kr.id] !== null; }); }).map(function(f){
       var d = OKRC.days[f], dt = parseISO(f), fest = festivoNombre(f), notas = [];
       if(fest) notas.push('festivo: ' + fest); else if(dt.getUTCDay() === 0) notas.push('domingo');
       if(d.kg > 0 && d.v.KR2 === null) notas.push('sin registros de nómina');
       var cell = function(kr){ var x = d.v[kr.id], s = okrEstado(x, kr); return '<td><span class="okr-pillcell ' + s + '">' + (x === null ? '—' : OKR_FMT[kr.id].v(x)) + '</span></td>'; };
       return '<tr><td class="dt-left"><b>' + DIAS_ES3[dt.getUTCDay()] + ' ' + dmIso(f) + '</b></td>' + K.map(cell).join('') + '<td class="dt-left" style="font-family:Inter;">' + okrEsc(notas.join(' · ')) + '</td></tr>';
-    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:16px;">Sin días con datos</td></tr>';
+    }).join('') || '<tr><td colspan="' + (K.length + 2) + '" style="text-align:center;color:var(--text-dim);padding:16px;">Sin días con datos</td></tr>';
   }
 
   function showView(v){
